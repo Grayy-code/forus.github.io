@@ -396,26 +396,36 @@
                 }, { merge: true });
             } catch (err) {
                 console.error("Failed to sync to cloud:", err);
+                if (err.code === 'permission-denied') {
+                    updateSyncUIStatus('error', 'Firestore Permission Denied: Ensure your Firestore Rules allow reads and writes (start in Test Mode).');
+                } else {
+                    updateSyncUIStatus('error', `Cloud sync failed: ${err.message || 'Network error'}`);
+                }
             }
         }
         window.saveToCloud = saveToCloud;
 
-        function updateSyncUIStatus(isOnline) {
+        function updateSyncUIStatus(state, errorMessage = '') {
             const pulse = document.getElementById('syncPulse');
             const banner = document.getElementById('syncStatusBanner');
             const title = document.getElementById('syncStatusTitle');
             const desc = document.getElementById('syncStatusDesc');
 
-            if (isOnline) {
+            if (state === 'online') {
                 if (pulse) pulse.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
                 if (banner) banner.className = 'p-3 rounded-xl border text-xs flex items-start gap-2.5 bg-emerald-50 border-emerald-200 text-emerald-900';
                 if (title) title.textContent = 'Live Cloud Sync Active 💕';
                 if (desc) desc.textContent = `Connected to room "${currentRoomId}". Updates on either phone will sync automatically in real-time.`;
+            } else if (state === 'error') {
+                if (pulse) pulse.className = 'w-2 h-2 rounded-full bg-rose-500';
+                if (banner) banner.className = 'p-3 rounded-xl border text-xs flex items-start gap-2.5 bg-rose-50 border-rose-200 text-rose-900';
+                if (title) title.textContent = 'Sync Connection Issue';
+                if (desc) desc.textContent = errorMessage || `Could not connect to Firebase. Local changes are saved safely on this device.`;
             } else {
                 if (pulse) pulse.className = 'w-2 h-2 rounded-full bg-amber-500 animate-pulse';
                 if (banner) banner.className = 'p-3 rounded-xl border text-xs flex items-start gap-2.5 bg-amber-50 border-amber-200 text-amber-900';
                 if (title) title.textContent = 'Local Storage Mode (Standalone)';
-                if (desc) desc.textContent = `Changes save locally on this device. To enable cross-device sync on GitHub Pages, paste your free Firebase config in the section below.`;
+                if (desc) desc.textContent = `Changes save locally on this device. To enable cross-device live sync, tap "Firebase Cloud Credentials Setup" below and paste your free Firebase config.`;
             }
         }
 
@@ -442,10 +452,16 @@
                 } else {
                     saveToCloud();
                 }
-                updateSyncUIStatus(true);
+                updateSyncUIStatus('online');
             }, (error) => {
                 console.error("Firestore sync error:", error);
-                updateSyncUIStatus(false);
+                let msg = "Firestore connection failed.";
+                if (error.code === 'permission-denied') {
+                    msg = "Permission denied: Go to Firebase Console -> Firestore Database -> Rules and set rules to start in Test Mode.";
+                } else if (error.code === 'unavailable') {
+                    msg = "Network offline or Firebase service unavailable.";
+                }
+                updateSyncUIStatus('error', msg);
             });
         }
 
@@ -455,8 +471,9 @@
 
             const firebaseConfig = getFirebaseConfig();
 
-            if (!firebaseConfig) {
-                updateSyncUIStatus(false);
+            // Check if config exists and isn't a placeholder API key
+            if (!firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey.includes("YOUR_API_KEY") || firebaseConfig.apiKey.includes("AIzaSyBeL_RP3j8HoKCQLRrQtSMrW3aHOhplL-4")) {
+                updateSyncUIStatus('offline');
                 return;
             }
 
@@ -494,14 +511,22 @@
                         await signInAnonymously(auth);
                         authenticated = true;
                     } catch (anonErr) {
-                        console.warn("Anonymous sign-in skipped/failed. Note: Enable Anonymous Auth in Firebase Console to remove this warning:", anonErr.message);
+                        console.warn("Anonymous sign-in failed:", anonErr.message);
+                        let errMsg = "Anonymous Authentication is not enabled in your Firebase Console. Go to Authentication -> Sign-in method -> Enable Anonymous.";
+                        if (anonErr.code === 'auth/invalid-api-key' || (anonErr.message && anonErr.message.includes('API key'))) {
+                            errMsg = "Invalid Firebase API key provided. Please check your credentials in the Room setup modal.";
+                        } else if (anonErr.code === 'auth/unauthorized-domain') {
+                            errMsg = "Domain not authorized: Go to Firebase Console -> Authentication -> Settings -> Authorized Domains and add 'mjc-create.github.io'.";
+                        }
+                        updateSyncUIStatus('error', errMsg);
+                        return;
                     }
                 }
 
                 setupRealtimeSync(currentRoomId);
             } catch (err) {
                 console.error("Initialization error:", err);
-                updateSyncUIStatus(false);
+                updateSyncUIStatus('error', err.message || "Failed to connect to Firebase.");
             }
         }
 

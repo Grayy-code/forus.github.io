@@ -333,7 +333,7 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { initializeApp, getApps, getApp, deleteApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
@@ -461,6 +461,17 @@
             }
 
             try {
+                // Detach existing active listener if reconnecting
+                if (unsubscribeSync) {
+                    unsubscribeSync();
+                    unsubscribeSync = null;
+                }
+
+                // Delete existing Firebase app instance to prevent duplicate app initialization errors
+                if (getApps().length > 0) {
+                    await deleteApp(getApp());
+                }
+
                 const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
@@ -547,20 +558,32 @@
 
                 if (parsed && parsed.apiKey && parsed.projectId) {
                     localStorage.setItem('savings_tracker_firebase_config', JSON.stringify(parsed));
+                    window.closeSyncModal();
                     initCloudSync();
-                    window.showToast("Firebase credentials saved! Connecting...");
+                    window.showToast("Firebase credentials saved & connected!");
                 } else {
-                    window.showToast("Config missing apiKey or projectId.", "error");
+                    window.showToast("Invalid Firebase config structure. Must contain apiKey & projectId.", "error");
                 }
             } catch(err) {
-                window.showToast("Invalid JSON format. Check brackets and quotes.", "error");
+                window.showToast("Failed to parse Firebase config. Check format.", "error");
             }
         };
 
-        window.clearFirebaseConfig = function() {
+        window.clearFirebaseConfig = async function() {
             localStorage.removeItem('savings_tracker_firebase_config');
             const textarea = document.getElementById('firebaseConfigInput');
             if (textarea) textarea.value = '';
+            
+            if (unsubscribeSync) {
+                unsubscribeSync();
+                unsubscribeSync = null;
+            }
+            if (getApps().length > 0) {
+                await deleteApp(getApp());
+            }
+            db = null;
+            auth = null;
+            
             updateSyncUIStatus(false);
             window.showToast("Firebase credentials removed.");
         };

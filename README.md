@@ -1,1 +1,1157 @@
-Just a page for me and my partner
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>For Us 💕 - Savings & Contribution Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        body.dark-theme {
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        body.dark-theme .bg-white {
+            background-color: #1e293b !important;
+            color: #f8fafc !important;
+        }
+        body.dark-theme .bg-slate-50 {
+            background-color: #0f172a !important;
+        }
+        body.dark-theme .bg-slate-100 {
+            background-color: #334155 !important;
+        }
+        body.dark-theme .text-slate-800, body.dark-theme .text-slate-900 {
+            color: #f1f5f9 !important;
+        }
+        body.dark-theme .text-slate-600, body.dark-theme .text-slate-700 {
+            color: #cbd5e1 !important;
+        }
+        body.dark-theme .text-slate-500 {
+            color: #94a3b8 !important;
+        }
+        body.dark-theme .border-slate-200, body.dark-theme .border-slate-100, body.dark-theme .border-slate-300 {
+            border-color: #334155 !important;
+        }
+        body.dark-theme td, body.dark-theme th {
+            border-color: #334155 !important;
+            color: #f8fafc !important;
+        }
+        body.dark-theme td.sticky, body.dark-theme th.sticky {
+            background-color: #1e293b !important;
+        }
+        body.dark-theme table thead tr, body.dark-theme table th {
+            background-color: #065f46 !important;
+            color: #f8fafc !important;
+            border-color: #047857 !important;
+        }
+        body.dark-theme input, 
+        body.dark-theme textarea, 
+        body.dark-theme select {
+            background-color: #0f172a !important;
+            border-color: #475569 !important;
+            color: #f8fafc !important;
+        }
+        body.dark-theme textarea::placeholder,
+        body.dark-theme input::placeholder {
+            color: #64748b !important;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            height: 8px;
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        body.dark-theme .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        body.dark-theme .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen pb-12">
+
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-black text-rose-600 flex items-center gap-2">
+                    For Us 💕
+                </h1>
+                <p class="text-xs text-slate-500 font-medium mt-0.5">For our Future</p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+                <button onclick="openSyncModal()" id="syncRoomBtn" class="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer" title="Manage Live Device Sync Room">
+                    <span id="syncPulse" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <i data-lucide="cloud" class="w-4 h-4 text-rose-600"></i>
+                    Room: <span id="displaySyncRoom" class="font-bold">our-savings-tracker</span>
+                    <i data-lucide="pencil" class="w-3 h-3 text-rose-400 opacity-80"></i>
+                </button>
+                <button onclick="changeRate()" class="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
+                    <i data-lucide="coins" class="w-4 h-4 text-emerald-600"></i>
+                    Rate: <span id="displayDailyRate">₱20</span>/day
+                </button>
+                <button onclick="changeInterest()" class="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer" title="Click to edit interest rate">
+                    <i data-lucide="trending-up" class="w-4 h-4 text-indigo-600"></i>
+                    Int: <span id="displayInterestRate">3%</span>
+                    <i data-lucide="pencil" class="w-3 h-3 text-indigo-500 opacity-70"></i>
+                </button>
+                <button onclick="toggleTheme()" class="p-2 text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200 transition" title="Toggle Theme">
+                    <i data-lucide="moon" id="themeIcon" class="w-4 h-4"></i>
+                </button>
+                <button onclick="exportJSONBackup()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium flex items-center gap-1.5 transition" title="Backup all data to a file">
+                    <i data-lucide="download" class="w-4 h-4"></i> Backup
+                </button>
+                <label class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium flex items-center gap-1.5 transition cursor-pointer" title="Restore data from backup file">
+                    <i data-lucide="upload" class="w-4 h-4"></i> Restore
+                    <input type="file" id="importFile" accept=".json" onchange="importJSONBackup(event)" class="hidden">
+                </label>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+        
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4">
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Month:</label>
+                    <select id="monthSelect" onchange="handleMonthFilterChange(this.value)" class="text-xs font-medium bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-emerald-500 outline-none">
+                        <option value="all">All Months</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+                    <button onclick="setFilter('all')" id="btnFilterAll" class="px-3 py-1 text-xs font-semibold rounded-md bg-white text-slate-800 shadow-xs">All</button>
+                    <button onclick="setFilter('month')" id="btnFilterMonth" class="px-3 py-1 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-900">This Month</button>
+                    <button onclick="setFilter('week')" id="btnFilterWeek" class="px-3 py-1 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-900">This Week</button>
+                    <button onclick="setFilter('missed')" id="btnFilterMissed" class="px-3 py-1 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-900">Missed</button>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+                <button onclick="jumpToToday()" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-xs">
+                    <i data-lucide="crosshair" class="w-4 h-4"></i> Jump to Today
+                </button>
+                <button onclick="openAddDayModal()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-xs">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Add Day
+                </button>
+                <button onclick="openAddMonthModal()" class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
+                    <i data-lucide="calendar-plus" class="w-4 h-4"></i> Add Month
+                </button>
+                <button onclick="toggleOrientation()" id="btnOrientation" class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium flex items-center justify-center transition" title="Toggle Layout: Dates in Columns ↔️ Rows">
+                    <i data-lucide="columns" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+
+        <div id="tableContainer" class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+            <!-- Dynamic Table Content -->
+        </div>
+
+        <div id="summaryCardsContainer" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Dynamic Summary Cards -->
+        </div>
+    </main>
+
+    <!-- Modals -->
+    <div id="syncModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-slate-100 space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i data-lucide="wifi" class="w-5 h-5 text-rose-600"></i> Pair Devices / Room
+                </h3>
+                <button onclick="closeSyncModal()" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <p class="text-xs text-slate-500 leading-relaxed">
+                Enter the same <strong>Room Code</strong> on both your phone and your girlfriend's phone to connect and view updates in real-time! 💕
+            </p>
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Room Code / Sync Key:</label>
+                <div class="flex gap-2">
+                    <input type="text" id="syncRoomInput" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm font-mono focus:ring-2 focus:ring-rose-500 focus:outline-none" placeholder="e.g. matt-and-tif-2026">
+                    <button onclick="copySyncCode()" class="px-3 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 text-xs font-semibold flex items-center gap-1 shrink-0" title="Copy code">
+                        <i data-lucide="copy" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="flex items-center justify-end gap-2 pt-2">
+                <button onclick="closeSyncModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-xs font-semibold">Cancel</button>
+                <button onclick="saveSyncRoom()" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5">
+                    <i data-lucide="cloud-lightning" class="w-4 h-4"></i> Connect & Sync
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="editSettingsModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-slate-100 space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 id="settingsModalTitle" class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i data-lucide="sliders" class="w-5 h-5 text-indigo-600"></i> Edit Settings
+                </h3>
+                <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div>
+                <label id="settingsModalLabel" class="block text-xs font-semibold text-slate-600 mb-1">Value:</label>
+                <input type="number" id="settingsModalInput" step="any" min="0" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            </div>
+            <div class="flex items-center justify-end gap-2 pt-2">
+                <button onclick="closeSettingsModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-xs font-semibold">Cancel</button>
+                <button onclick="saveSettingsModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="noteModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-100 space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i data-lucide="file-text" class="w-5 h-5 text-emerald-600"></i> Entry Notes
+                </h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div>
+                <p id="modalSubtext" class="text-xs font-medium text-slate-500 mb-2"></p>
+                <textarea id="modalNoteText" rows="4" class="w-full border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Add optional details or notes..."></textarea>
+            </div>
+            <div class="flex items-center justify-between pt-2">
+                <button id="btnDeleteNote" onclick="deleteModalNote()" class="px-3 py-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg text-xs font-semibold flex items-center gap-1 transition">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i> Delete Note
+                </button>
+                <div class="flex items-center gap-2">
+                    <button onclick="closeModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-xs font-semibold">Cancel</button>
+                    <button onclick="saveModalNote()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs">Save Note</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="addDayModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-slate-100 space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i data-lucide="calendar" class="w-5 h-5 text-emerald-600"></i> Add Single Day
+                </h3>
+                <button onclick="closeAddDayModal()" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Select Date:</label>
+                <input type="date" id="newDateInput" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+            </div>
+            <div class="flex items-center justify-end gap-2 pt-2">
+                <button onclick="closeAddDayModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-xs font-semibold">Cancel</button>
+                <button onclick="saveNewDay()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs">Add Date</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="addMonthModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-slate-100 space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i data-lucide="calendar-plus" class="w-5 h-5 text-emerald-600"></i> Add Entire Month
+                </h3>
+                <button onclick="closeAddMonthModal()" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Select Month & Year:</label>
+                <input type="month" id="newMonthInput" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+            </div>
+            <div class="flex items-center justify-end gap-2 pt-2">
+                <button onclick="closeAddMonthModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-xs font-semibold">Cancel</button>
+                <button onclick="saveNewMonth()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs">Generate Month</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Non-intrusive Toast Notification -->
+    <div id="toastNotification" class="fixed bottom-5 right-5 z-50 bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 transition-all duration-300 opacity-0 pointer-events-none transform translate-y-2">
+        <i id="toastIcon" data-lucide="check-circle-2" class="w-5 h-5"></i>
+        <span id="toastText" class="text-xs font-semibold"></span>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Environment variables setup
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'for-us-savings-tracker';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+
+        let db = null;
+        let auth = null;
+        let unsubscribeSync = null;
+        let isSyncingFromCloud = false;
+
+        let currentRoomId = localStorage.getItem('savings_tracker_room_id') || 'our-savings-tracker';
+
+        async function saveToCloud() {
+            if (!db || !auth || !auth.currentUser || isSyncingFromCloud) return;
+            try {
+                const trackerRef = doc(db, 'artifacts', appId, 'public', 'data', 'trackers', currentRoomId);
+                await setDoc(trackerRef, {
+                    data: window.appData,
+                    updatedAt: new Date().toISOString(),
+                    updatedBy: auth.currentUser.uid
+                }, { merge: true });
+            } catch (err) {
+                console.error("Failed to sync to cloud:", err);
+            }
+        }
+        window.saveToCloud = saveToCloud;
+
+        function setupRealtimeSync(roomId) {
+            if (!db || !auth || !auth.currentUser) return;
+
+            if (unsubscribeSync) {
+                unsubscribeSync();
+            }
+
+            const trackerRef = doc(db, 'artifacts', appId, 'public', 'data', 'trackers', roomId);
+            
+            unsubscribeSync = onSnapshot(trackerRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    const cloudContent = snapshot.data();
+                    if (cloudContent && cloudContent.data) {
+                        isSyncingFromCloud = true;
+                        window.appData = cloudContent.data;
+                        localStorage.setItem('contributionTrackerData', JSON.stringify(window.appData));
+                        if (window.populateMonthSelectOptions) window.populateMonthSelectOptions();
+                        if (window.renderAll) window.renderAll(true);
+                        isSyncingFromCloud = false;
+                    }
+                } else {
+                    // Seed initial data to cloud if room is newly created
+                    saveToCloud();
+                }
+            }, (error) => {
+                console.error("Firestore sync error:", error);
+            });
+        }
+
+        async function initCloudSync() {
+            const roomDisplay = document.getElementById('displaySyncRoom');
+            if (roomDisplay) roomDisplay.textContent = currentRoomId;
+
+            if (!firebaseConfig) {
+                console.warn("Firebase configuration not available. Local storage mode active.");
+                return;
+            }
+
+            try {
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                setupRealtimeSync(currentRoomId);
+            } catch (err) {
+                console.error("Initialization error:", err);
+            }
+        }
+
+        window.openSyncModal = function() {
+            const input = document.getElementById('syncRoomInput');
+            if (input) input.value = currentRoomId;
+            document.getElementById('syncModal').classList.remove('hidden');
+        };
+
+        window.closeSyncModal = function() {
+            document.getElementById('syncModal').classList.add('hidden');
+        };
+
+        window.saveSyncRoom = function() {
+            const input = document.getElementById('syncRoomInput');
+            const newRoom = input.value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+            if (!newRoom) return;
+
+            currentRoomId = newRoom;
+            localStorage.setItem('savings_tracker_room_id', currentRoomId);
+            
+            const roomDisplay = document.getElementById('displaySyncRoom');
+            if (roomDisplay) roomDisplay.textContent = currentRoomId;
+
+            setupRealtimeSync(currentRoomId);
+            window.closeSyncModal();
+            window.showToast(`Switched to room: ${currentRoomId}`);
+        };
+
+        window.copySyncCode = function() {
+            const input = document.getElementById('syncRoomInput');
+            if (input && input.value) {
+                navigator.clipboard?.writeText ? navigator.clipboard.writeText(input.value) : document.execCommand('copy');
+                window.showToast("Room code copied!");
+            }
+        };
+
+        // Initialize Firebase on DOM ready
+        document.addEventListener('DOMContentLoaded', initCloudSync);
+    </script>
+
+    <script>
+        const defaultData = {
+            dailyRate: 20,
+            interestRate: 3,
+            people: ["Matt", "Tif"],
+            dates: [
+                "August 23, 2026", "August 24, 2026", "August 25, 2026",
+                "August 26, 2026", "August 27, 2026", "August 28, 2026", "August 29, 2026", "August 30, 2026",
+                "August 31, 2026", "September 1, 2026", "September 2, 2026", "September 3, 2026", "September 4, 2026",
+                "September 5, 2026", "September 6, 2026", "September 7, 2026", "September 8, 2026", "September 9, 2026",
+                "September 10, 2026", "September 11, 2026", "September 12, 2026", "September 13, 2026", "September 14, 2026",
+                "September 15, 2026", "September 16, 2026", "September 17, 2026", "September 18, 2026", "September 19, 2026",
+                "September 20, 2026", "September 21, 2026", "September 22, 2026", "September 23, 2026", "September 24, 2026",
+                "September 25, 2026", "September 26, 2026"
+            ],
+            cells: {
+                "r0_c2": { status: "done", checked: true, timestamp: "09:30 AM", notes: "Saved ₱20" },
+                "r1_c2": { status: "done", checked: true, timestamp: "10:15 AM", notes: "Saved ₱20" }
+            }
+        };
+
+        let appData = JSON.parse(JSON.stringify(defaultData));
+        window.appData = appData;
+
+        let activeFilter = 'all'; 
+        let currentMonthFilter = 'all'; 
+        let orientation = 'horizontal'; 
+        let currentModalTarget = null; 
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toastNotification');
+            const toastText = document.getElementById('toastText');
+            const toastIcon = document.getElementById('toastIcon');
+            if (!toast || !toastText) return;
+
+            toastText.textContent = message;
+            if (type === 'error') {
+                toast.className = 'fixed bottom-5 right-5 z-50 bg-rose-600 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 transition-all duration-300 opacity-100 transform translate-y-0';
+                if (toastIcon) toastIcon.setAttribute('data-lucide', 'alert-circle');
+            } else {
+                toast.className = 'fixed bottom-5 right-5 z-50 bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 transition-all duration-300 opacity-100 transform translate-y-0';
+                if (toastIcon) toastIcon.setAttribute('data-lucide', 'check-circle-2');
+            }
+            if (window.lucide) lucide.createIcons();
+
+            setTimeout(() => {
+                toast.className = 'fixed bottom-5 right-5 z-50 bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 transition-all duration-300 opacity-0 pointer-events-none transform translate-y-2';
+            }, 3000);
+        }
+
+        function loadLocalData() {
+            const saved = localStorage.getItem('contributionTrackerData');
+            if (saved) {
+                try {
+                    appData = JSON.parse(saved);
+                    if (appData.dailyRate === undefined) appData.dailyRate = 20;
+                    if (appData.interestRate === undefined) appData.interestRate = 3;
+                    if (!appData.dates || !Array.isArray(appData.dates)) appData.dates = defaultData.dates;
+                    if (!appData.people || !Array.isArray(appData.people)) appData.people = defaultData.people;
+                    if (!appData.cells) appData.cells = {};
+                } catch (e) {
+                    appData = JSON.parse(JSON.stringify(defaultData));
+                }
+            } else {
+                appData = JSON.parse(JSON.stringify(defaultData));
+            }
+            appData.dates = appData.dates.filter(d => d !== "August 21, 2026" && d !== "August 22, 2026");
+            window.appData = appData;
+            populateMonthSelectOptions();
+            renderAll(false);
+        }
+
+        function saveLocalData() {
+            localStorage.setItem('contributionTrackerData', JSON.stringify(appData));
+        }
+
+        function isTodayDate(dateStr) {
+            const today = new Date();
+            const parsed = new Date(dateStr);
+            if (isNaN(parsed.getTime())) return false;
+            return parsed.getDate() === today.getDate() &&
+                   parsed.getMonth() === today.getMonth() &&
+                   parsed.getFullYear() === today.getFullYear();
+        }
+
+        function isPastDate(dateStr) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const parsed = new Date(dateStr);
+            if (isNaN(parsed.getTime())) return false;
+            parsed.setHours(0, 0, 0, 0);
+            return parsed < today;
+        }
+
+        function getCellId(pIndex, dIndex) {
+            return `r${pIndex}_c${dIndex}`;
+        }
+
+        function toggleCellCheckbox(pIndex, dIndex, isChecked) {
+            const cellId = getCellId(pIndex, dIndex);
+            if (!appData.cells[cellId]) {
+                appData.cells[cellId] = { status: '', notes: '', timestamp: '' };
+            }
+
+            if (isChecked) {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                appData.cells[cellId].status = 'done';
+                appData.cells[cellId].checked = true;
+                appData.cells[cellId].timestamp = timeString;
+            } else {
+                appData.cells[cellId].status = '';
+                appData.cells[cellId].checked = false;
+                appData.cells[cellId].timestamp = '';
+            }
+
+            saveLocalData();
+            if (window.saveToCloud) window.saveToCloud();
+            renderAll(true);
+        }
+
+        function getFilteredDateIndices() {
+            let indices = appData.dates.map((_, i) => i);
+
+            if (currentMonthFilter !== 'all') {
+                indices = indices.filter(i => {
+                    const d = new Date(appData.dates[i]);
+                    if (isNaN(d.getTime())) return false;
+                    const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                    return monthKey === currentMonthFilter;
+                });
+            }
+
+            if (activeFilter === 'month') {
+                const today = new Date();
+                const curYear = today.getFullYear();
+                const curMonth = today.getMonth();
+
+                indices = indices.filter(i => {
+                    const d = new Date(appData.dates[i]);
+                    return !isNaN(d.getTime()) && d.getFullYear() === curYear && d.getMonth() === curMonth;
+                });
+            } else if (activeFilter === 'week') {
+                const today = new Date();
+                const startOfWeek = new Date(today);
+                startOfWeek.setDate(today.getDate() - today.getDay());
+                startOfWeek.setHours(0,0,0,0);
+                
+                const endOfWeek = new Date(startOfWeek);
+                endOfWeek.setDate(startOfWeek.getDate() + 6);
+                endOfWeek.setHours(23,59,59,999);
+
+                indices = indices.filter(i => {
+                    const d = new Date(appData.dates[i]);
+                    return d >= startOfWeek && d <= endOfWeek;
+                });
+            } else if (activeFilter === 'missed') {
+                indices = indices.filter(dIndex => {
+                    const dateStr = appData.dates[dIndex];
+                    if (!isPastDate(dateStr)) return false;
+                    return appData.people.some((_, pIndex) => {
+                        const cellId = getCellId(pIndex, dIndex);
+                        const cell = appData.cells[cellId];
+                        return !(cell && (cell.status === 'done' || cell.checked));
+                    });
+                });
+            }
+
+            return indices;
+        }
+
+        function calculateStreaksAndStats() {
+            const todayObj = new Date();
+            todayObj.setHours(0, 0, 0, 0);
+
+            return appData.people.map((person, pIndex) => {
+                let totalChecked = 0;
+                let currentStreak = 0;
+                let bestStreak = 0;
+                let tempStreak = 0;
+
+                appData.dates.forEach((_, dIndex) => {
+                    const cellId = getCellId(pIndex, dIndex);
+                    const cell = appData.cells[cellId];
+                    const isDone = cell && (cell.status === 'done' || cell.checked);
+
+                    if (isDone) {
+                        totalChecked++;
+                        tempStreak++;
+                        if (tempStreak > bestStreak) bestStreak = tempStreak;
+                    } else {
+                        tempStreak = 0;
+                    }
+                });
+
+                let lastCheckableIndex = -1;
+                for (let i = appData.dates.length - 1; i >= 0; i--) {
+                    const d = new Date(appData.dates[i]);
+                    if (!isNaN(d.getTime())) {
+                        d.setHours(0, 0, 0, 0);
+                        if (d <= todayObj) {
+                            lastCheckableIndex = i;
+                            break;
+                        }
+                    }
+                }
+
+                if (lastCheckableIndex === -1) {
+                    lastCheckableIndex = appData.dates.length - 1;
+                }
+
+                for (let i = lastCheckableIndex; i >= 0; i--) {
+                    const cellId = getCellId(pIndex, i);
+                    const cell = appData.cells[cellId];
+                    const isDone = cell && (cell.status === 'done' || cell.checked);
+
+                    if (isDone) {
+                        currentStreak++;
+                    } else {
+                        const d = new Date(appData.dates[i]);
+                        d.setHours(0, 0, 0, 0);
+                        if (d.getTime() === todayObj.getTime() && currentStreak === 0) {
+                            continue;
+                        }
+                        break;
+                    }
+                }
+
+                return {
+                    person,
+                    totalChecked,
+                    currentStreak,
+                    bestStreak,
+                    totalSaved: totalChecked * appData.dailyRate
+                };
+            });
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function createCellTd(pIndex, dIndex, isToday = false) {
+            const cellId = getCellId(pIndex, dIndex);
+            const cellData = appData.cells[cellId] || { status: '', notes: '', timestamp: '' };
+            const isChecked = cellData.status === 'done' || cellData.checked || false;
+            const dateStr = appData.dates[dIndex];
+            const isPast = isPastDate(dateStr);
+            const isMissed = isPast && !isChecked;
+
+            const td = document.createElement('td');
+            const borderClass = isToday 
+                ? 'border-r-2 border-l-2 border-amber-300/80' 
+                : (isMissed ? 'border-r border-rose-200/60' : 'border-r border-slate-200/60');
+            td.className = `${borderClass} p-0 relative text-center min-w-[160px]`;
+
+            let bgClass = '';
+            if (isChecked) {
+                bgClass = isToday ? 'bg-emerald-100/90' : 'bg-emerald-50/80';
+            } else if (isMissed) {
+                bgClass = 'bg-rose-50/60 dark:bg-rose-950/20';
+            } else if (isToday) {
+                bgClass = 'bg-amber-50/60';
+            }
+
+            const hasNotes = Boolean(cellData.notes);
+            const safeNotes = escapeHtml(cellData.notes);
+
+            const noteBtnHtml = hasNotes
+                ? `<button onclick="openModal(${pIndex}, ${dIndex})" class="absolute top-1 right-1 text-emerald-700 hover:text-emerald-900 p-1 bg-white/90 rounded-full shadow-xs" title="${safeNotes}">
+                    <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                   </button>`
+                : `<button onclick="openModal(${pIndex}, ${dIndex})" class="absolute top-1 right-1 text-slate-300 hover:text-slate-500 opacity-0 group-hover/cell:opacity-100 transition p-1" title="Add Details / Notes">
+                    <i data-lucide="sticky-note" class="w-3.5 h-3.5"></i>
+                   </button>`;
+
+            const timeBadge = (isChecked && cellData.timestamp)
+                ? `<span class="text-2xs font-semibold text-emerald-800 bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-200 px-2 py-0.5 rounded-full shadow-xs mt-1 border border-emerald-200/60 dark:border-emerald-800">${escapeHtml(cellData.timestamp)}</span>`
+                : (isMissed ? `<span class="text-2xs font-semibold text-rose-700 bg-rose-100/80 dark:bg-rose-950 dark:text-rose-300 px-2 py-0.5 rounded-full shadow-xs mt-1 border border-rose-200 dark:border-rose-900">Missed</span>` : '');
+
+            const checkboxBorder = isMissed ? 'border-rose-300 bg-rose-50' : 'border-slate-300';
+
+            td.innerHTML = `
+                <div class="w-full h-full min-h-[60px] flex flex-col items-center justify-center relative group/cell ${bgClass} p-2 transition">
+                    <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleCellCheckbox(${pIndex}, ${dIndex}, this.checked)" class="w-5 h-5 rounded-md ${checkboxBorder} text-emerald-600 focus:ring-emerald-500 cursor-pointer accent-emerald-600 transition shadow-xs">
+                    ${timeBadge}
+                    ${noteBtnHtml}
+                </div>
+            `;
+            return td;
+        }
+
+        function populateMonthSelectOptions() {
+            const select = document.getElementById('monthSelect');
+            if (!select) return;
+
+            const existingMonths = new Set();
+            appData.dates.forEach(dateStr => {
+                const d = new Date(dateStr);
+                if (!isNaN(d.getTime())) {
+                    const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                    const monthName = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                    existingMonths.add(JSON.stringify({ key: monthKey, name: monthName }));
+                }
+            });
+
+            const sortedMonths = Array.from(existingMonths)
+                .map(item => JSON.parse(item))
+                .sort((a, b) => a.key.localeCompare(b.key));
+
+            select.innerHTML = '<option value="all">All Months</option>';
+            sortedMonths.forEach(m => {
+                const option = document.createElement('option');
+                option.value = m.key;
+                option.textContent = m.name;
+                select.appendChild(option);
+            });
+
+            select.value = currentMonthFilter;
+        }
+
+        function renderHorizontalTable() {
+            const container = document.getElementById('tableContainer');
+            const filteredIndices = getFilteredDateIndices();
+
+            if (filteredIndices.length === 0) {
+                container.innerHTML = `
+                    <div class="p-8 text-center text-slate-500 space-y-2">
+                        <i data-lucide="check-circle-2" class="w-10 h-10 text-emerald-500 mx-auto opacity-80"></i>
+                        <p class="font-bold text-sm text-slate-700">No missed contributions!</p>
+                        <p class="text-xs text-slate-500">Everything is up to date for past dates. 💕</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full border-collapse text-left text-sm">
+                        <thead>
+                            <tr class="bg-emerald-700 text-white border-b border-emerald-800">
+                                <th class="p-3 font-bold text-white w-44 min-w-[176px] sticky left-0 bg-emerald-800 z-20 border-r-2 border-emerald-600">Person / Date</th>
+            `;
+
+            filteredIndices.forEach(dIndex => {
+                const dateStr = appData.dates[dIndex];
+                const isToday = isTodayDate(dateStr);
+                const headerBg = isToday ? 'bg-emerald-600 text-amber-300 font-extrabold border-emerald-500' : 'bg-emerald-700 text-emerald-50';
+                const todayBadge = isToday ? `<span class="inline-block text-3xs uppercase tracking-wider text-amber-950 bg-amber-400 px-2 py-0.5 rounded-full font-black mt-1 shadow-xs animate-pulse">TODAY</span>` : '';
+
+                html += `
+                    <th id="${isToday ? 'today-col' : ''}" class="p-2.5 text-center font-medium min-w-[160px] border-r border-emerald-600/80 ${headerBg}">
+                        <div class="text-xs font-bold">${escapeHtml(dateStr)}</div>
+                        ${todayBadge}
+                    </th>
+                `;
+            });
+
+            html += `</tr></thead><tbody>`;
+
+            appData.people.forEach((person, pIndex) => {
+                const avatarColor = pIndex === 0 ? 'bg-sky-100 text-sky-600 dark:bg-sky-950 dark:text-sky-300' : 'bg-rose-100 text-rose-600 dark:bg-rose-950 dark:text-rose-300';
+                html += `
+                    <tr class="border-b border-slate-200/70 hover:bg-slate-50/50">
+                        <td class="p-3 font-semibold text-slate-800 dark:text-slate-100 sticky left-0 bg-white dark:bg-slate-800 z-10 border-r-2 border-slate-200 dark:border-slate-700">
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-full ${avatarColor} flex items-center justify-center font-bold text-xs shrink-0">
+                                    ${escapeHtml(person.charAt(0))}
+                                </div>
+                                <span class="truncate">${escapeHtml(person)}</span>
+                            </div>
+                        </td>
+                `;
+
+                filteredIndices.forEach(dIndex => {
+                    const dateStr = appData.dates[dIndex];
+                    const isToday = isTodayDate(dateStr);
+                    const td = createCellTd(pIndex, dIndex, isToday);
+                    html += td.outerHTML;
+                });
+
+                html += `</tr>`;
+            });
+
+            html += `</tbody></table></div>`;
+            container.innerHTML = html;
+        }
+
+        function renderVerticalTable() {
+            const container = document.getElementById('tableContainer');
+            const filteredIndices = getFilteredDateIndices();
+
+            if (filteredIndices.length === 0) {
+                container.innerHTML = `
+                    <div class="p-8 text-center text-slate-500 space-y-2">
+                        <i data-lucide="check-circle-2" class="w-10 h-10 text-emerald-500 mx-auto opacity-80"></i>
+                        <p class="font-bold text-sm text-slate-700">No missed contributions!</p>
+                        <p class="text-xs text-slate-500">Everything is up to date for past dates. 💕</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full border-collapse text-left text-sm border border-slate-300 dark:border-slate-700">
+                        <thead>
+                            <tr class="bg-emerald-700 text-white border-b-2 border-emerald-800">
+                                <th class="p-3 font-bold text-white bg-emerald-800 border-r-2 border-emerald-600 w-48 min-w-[180px]">Date</th>
+            `;
+
+            appData.people.forEach((person, pIndex) => {
+                const avatarColor = pIndex === 0 ? 'bg-sky-100 text-sky-600' : 'bg-rose-100 text-rose-600';
+                html += `
+                    <th class="p-3 font-semibold text-white text-center border-r-2 border-emerald-600 bg-emerald-700 min-w-[160px]">
+                        <div class="flex items-center justify-center gap-1.5">
+                            <span class="w-5 h-5 rounded-full ${avatarColor} inline-flex items-center justify-center text-3xs font-bold">${escapeHtml(person.charAt(0))}</span>
+                            <span>${escapeHtml(person)}</span>
+                        </div>
+                    </th>
+                `;
+            });
+
+            html += `</tr></thead><tbody>`;
+
+            filteredIndices.forEach(dIndex => {
+                const dateStr = appData.dates[dIndex];
+                const isToday = isTodayDate(dateStr);
+                const rowBg = isToday ? 'bg-amber-50/60 dark:bg-amber-950/20 font-medium' : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40';
+                const todayBadge = isToday ? `<span class="inline-block text-3xs uppercase tracking-wider text-amber-950 bg-amber-400 px-2 py-0.5 rounded-full font-black ml-2 shadow-xs animate-pulse">TODAY</span>` : '';
+
+                html += `<tr id="${isToday ? 'today-row' : ''}" class="border-b-2 border-slate-200 dark:border-slate-700/80 ${rowBg}">`;
+                html += `<td class="p-3 text-slate-800 dark:text-slate-200 font-semibold border-r-2 border-slate-300 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/60">${escapeHtml(dateStr)} ${todayBadge}</td>`;
+
+                appData.people.forEach((_, pIndex) => {
+                    const td = createCellTd(pIndex, dIndex, isToday);
+                    td.className += " border-r-2 border-slate-200 dark:border-slate-700/80";
+                    html += td.outerHTML;
+                });
+
+                html += `</tr>`;
+            });
+
+            html += `</tbody></table></div>`;
+            container.innerHTML = html;
+        }
+
+        function renderSummaryCards() {
+            const container = document.getElementById('summaryCardsContainer');
+            const stats = calculateStreaksAndStats();
+
+            const combinedBaseSaved = stats.reduce((acc, curr) => acc + curr.totalSaved, 0);
+            const combinedInterest = combinedBaseSaved * (appData.interestRate / 100);
+            const combinedTotalWithInterest = combinedBaseSaved + combinedInterest;
+
+            let html = '';
+
+            stats.forEach((stat, pIndex) => {
+                const dotColor = pIndex === 0 ? 'bg-sky-500' : 'bg-rose-500';
+                const streakBg = pIndex === 0 ? 'text-sky-700 bg-sky-50 border-sky-200' : 'text-rose-700 bg-rose-50 border-rose-200';
+                html += `
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-3">
+                        <div class="flex items-center justify-between">
+                            <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full ${dotColor}"></span>
+                                ${escapeHtml(stat.person)}'s Progress
+                            </h3>
+                            <span class="text-xs font-bold ${streakBg} px-2.5 py-1 rounded-full border">
+                                🔥 ${stat.currentStreak} Day Streak
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
+                            <div>
+                                <span class="text-xs text-slate-500 block">Total Checkmarks</span>
+                                <span class="text-lg font-extrabold text-slate-800">${stat.totalChecked} days</span>
+                            </div>
+                            <div>
+                                <span class="text-xs text-slate-500 block">Money Saved</span>
+                                <span class="text-lg font-extrabold text-emerald-600">₱${stat.totalSaved.toLocaleString()}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `
+                <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white p-5 rounded-xl shadow-md space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-bold flex items-center gap-2">
+                            <i data-lucide="piggy-bank" class="w-5 h-5 text-amber-400"></i>
+                            Joint Future Savings
+                        </h3>
+                        <button onclick="changeInterest()" class="text-xs font-bold text-amber-300 bg-amber-400/20 hover:bg-amber-400/30 px-2.5 py-1 rounded-full border border-amber-400/30 transition flex items-center gap-1 cursor-pointer" title="Click to edit interest rate">
+                            +${appData.interestRate}% Interest <i data-lucide="pencil" class="w-3 h-3 opacity-80"></i>
+                        </button>
+                    </div>
+                    <div class="space-y-1.5 pt-1">
+                        <div class="flex justify-between text-xs text-slate-300">
+                            <span>Base Savings:</span>
+                            <span class="font-semibold text-white">₱${combinedBaseSaved.toLocaleString()}</span>
+                        </div>
+                        <div class="flex justify-between text-xs text-emerald-300">
+                            <span>Projected Interest (+${appData.interestRate}%):</span>
+                            <span class="font-semibold">₱${combinedInterest.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                        </div>
+                        <div class="flex justify-between text-base font-extrabold text-amber-300 pt-2 border-t border-slate-700/80">
+                            <span>Total Future Value:</span>
+                            <span>₱${combinedTotalWithInterest.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = html;
+            document.getElementById('displayDailyRate').textContent = `₱${appData.dailyRate}`;
+            document.getElementById('displayInterestRate').textContent = `${appData.interestRate}%`;
+        }
+
+        function renderAll(preserveScroll = true) {
+            let containerScrollLeft = 0;
+            let containerScrollTop = 0;
+            const windowScrollY = window.scrollY;
+
+            if (preserveScroll) {
+                const prevContainer = document.querySelector('#tableContainer .overflow-x-auto');
+                if (prevContainer) {
+                    containerScrollLeft = prevContainer.scrollLeft;
+                    containerScrollTop = prevContainer.scrollTop;
+                }
+            }
+
+            if (orientation === 'horizontal') {
+                renderHorizontalTable();
+            } else {
+                renderVerticalTable();
+            }
+            renderSummaryCards();
+            
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+
+            if (preserveScroll) {
+                requestAnimationFrame(() => {
+                    const newContainer = document.querySelector('#tableContainer .overflow-x-auto');
+                    if (newContainer) {
+                        newContainer.scrollLeft = containerScrollLeft;
+                        newContainer.scrollTop = containerScrollTop;
+                    }
+                    window.scrollTo(0, windowScrollY);
+                });
+            }
+        }
+
+        function openModal(pIndex, dIndex) {
+            currentModalTarget = { pIndex, dIndex };
+            const cellId = getCellId(pIndex, dIndex);
+            const cellData = appData.cells[cellId] || { notes: '' };
+
+            document.getElementById('modalSubtext').textContent = `${appData.people[pIndex]} • ${appData.dates[dIndex]}`;
+            document.getElementById('modalNoteText').value = cellData.notes || '';
+            
+            const btnDelete = document.getElementById('btnDeleteNote');
+            if (cellData.notes) {
+                btnDelete.classList.remove('hidden');
+            } else {
+                btnDelete.classList.add('hidden');
+            }
+
+            document.getElementById('noteModal').classList.remove('hidden');
+        }
+
+        function saveModalNote() {
+            if (!currentModalTarget) return;
+            const { pIndex, dIndex } = currentModalTarget;
+            const cellId = getCellId(pIndex, dIndex);
+
+            if (!appData.cells[cellId]) {
+                appData.cells[cellId] = { status: '', notes: '', timestamp: '' };
+            }
+
+            appData.cells[cellId].notes = document.getElementById('modalNoteText').value.trim();
+            saveLocalData();
+            if (window.saveToCloud) window.saveToCloud();
+            closeModal();
+            renderAll(true);
+            showToast("Note saved successfully!");
+        }
+
+        function deleteModalNote() {
+            if (!currentModalTarget) return;
+            const { pIndex, dIndex } = currentModalTarget;
+            const cellId = getCellId(pIndex, dIndex);
+
+            if (appData.cells[cellId]) {
+                appData.cells[cellId].notes = '';
+            }
+
+            saveLocalData();
+            if (window.saveToCloud) window.saveToCloud();
+            closeModal();
+            renderAll(true);
+            showToast("Note removed.");
+        }
+
+        function closeModal() {
+            document.getElementById('noteModal').classList.add('hidden');
+            currentModalTarget = null;
+        }
+
+        function openAddDayModal() {
+            document.getElementById('addDayModal').classList.remove('hidden');
+        }
+
+        function closeAddDayModal() {
+            document.getElementById('addDayModal').classList.add('hidden');
+        }
+
+        function saveNewDay() {
+            const val = document.getElementById('newDateInput').value;
+            if (!val) return;
+            const d = new Date(val);
+            const dateStr = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+            if (!appData.dates.includes(dateStr)) {
+                appData.dates.push(dateStr);
+                saveLocalData();
+                if (window.saveToCloud) window.saveToCloud();
+                populateMonthSelectOptions();
+                renderAll(false);
+                showToast(`Added ${dateStr}`);
+            } else {
+                showToast(`${dateStr} is already added.`, 'error');
+            }
+            closeAddDayModal();
+        }
+
+        function openAddMonthModal() {
+            document.getElementById('addMonthModal').classList.remove('hidden');
+        }
+
+        function closeAddMonthModal() {
+            document.getElementById('addMonthModal').classList.add('hidden');
+        }
+
+        function saveNewMonth() {
+            const val = document.getElementById('newMonthInput').value;
+            if (!val) return;
+
+            const [year, month] = val.split('-').map(Number);
+            const daysInMonth = new Date(year, month, 0).getDate();
+
+            let addedCount = 0;
+            for (let day = 1; day <= daysInMonth; day++) {
+                const d = new Date(year, month - 1, day);
+                const dateStr = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+                if (!appData.dates.includes(dateStr)) {
+                    appData.dates.push(dateStr);
+                    addedCount++;
+                }
+            }
+
+            if (addedCount > 0) {
+                saveLocalData();
+                if (window.saveToCloud) window.saveToCloud();
+                populateMonthSelectOptions();
+                currentMonthFilter = `${year}-${String(month).padStart(2, '0')}`;
+                document.getElementById('monthSelect').value = currentMonthFilter;
+                renderAll(false);
+                showToast(`Generated month (${addedCount} days added)`);
+            } else {
+                showToast('All days in this month already exist.', 'error');
+            }
+
+            closeAddMonthModal();
+        }
+<!-- ... existing code ... baseline save settings modal -->
+        function saveSettingsModal() {
+            const input = document.getElementById('settingsModalInput');
+            const type = input.dataset.type;
+            const val = Number(input.value);
+
+            if (!isNaN(val) && val >= 0) {
+                if (type === 'rate') {
+                    appData.dailyRate = val;
+                } else {
+                    appData.interestRate = val;
+                }
+                saveLocalData();
+                if (window.saveToCloud) window.saveToCloud();
+                renderAll(true);
+                showToast("Settings updated successfully!");
+            }
+            closeSettingsModal();
+        }
+<!-- ... existing code ... baseline backup import -->
+        function importJSONBackup(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (parsed && parsed.dates && parsed.people) {
+                        appData = parsed;
+                        saveLocalData();
+                        if (window.saveToCloud) window.saveToCloud();
+                        populateMonthSelectOptions();
+                        renderAll(false);
+                        showToast("Data restored successfully!");
+                    } else {
+                        showToast("Invalid backup file format.", "error");
+                    }
+                } catch (err) {
+                    showToast("Could not read backup file.", "error");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        window.onload = function() {
+            if (localStorage.getItem('contributionTrackerTheme') === 'dark') {
+                document.body.classList.add('dark-theme');
+                const themeIcon = document.getElementById('themeIcon');
+                if (themeIcon) themeIcon.setAttribute('data-lucide', 'sun');
+            }
+            loadLocalData();
+        };
+    </script>
+</body>
+</html>

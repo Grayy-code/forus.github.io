@@ -386,13 +386,13 @@
         }
 
         async function saveToCloud() {
-            if (!db || !auth || !auth.currentUser || isSyncingFromCloud) return;
+            if (!db || isSyncingFromCloud) return;
             try {
                 const trackerRef = doc(db, 'artifacts', appId, 'public', 'data', 'trackers', currentRoomId);
                 await setDoc(trackerRef, {
                     data: window.appData,
                     updatedAt: new Date().toISOString(),
-                    updatedBy: auth.currentUser.uid
+                    updatedBy: auth?.currentUser?.uid || 'anonymous'
                 }, { merge: true });
             } catch (err) {
                 console.error("Failed to sync to cloud:", err);
@@ -420,7 +420,7 @@
         }
 
         function setupRealtimeSync(roomId) {
-            if (!db || !auth || !auth.currentUser) return;
+            if (!db) return;
 
             if (unsubscribeSync) {
                 unsubscribeSync();
@@ -465,14 +465,29 @@
                 auth = getAuth(app);
                 db = getFirestore(app);
 
+                let authenticated = false;
+
+                // Try custom token auth if provided
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
+                    try {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                        authenticated = true;
+                    } catch (tokenErr) {
+                        console.warn("Custom token sign-in skipped/failed:", tokenErr.message);
+                    }
+                }
+
+                // Fall back to anonymous authentication if needed
+                if (!authenticated) {
+                    try {
+                        await signInAnonymously(auth);
+                        authenticated = true;
+                    } catch (anonErr) {
+                        console.warn("Anonymous sign-in skipped/failed. Note: Enable Anonymous Auth in Firebase Console to remove this warning:", anonErr.message);
+                    }
                 }
 
                 setupRealtimeSync(currentRoomId);
-                updateSyncUIStatus(true);
             } catch (err) {
                 console.error("Initialization error:", err);
                 updateSyncUIStatus(false);

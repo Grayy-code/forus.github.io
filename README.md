@@ -352,12 +352,12 @@
         // Once saved, every phone/device opening this URL will sync automatically!
         // =========================================================================
         const HARDCODED_FIREBASE_CONFIG = {
-            apiKey: "YOUR_API_KEY_HERE",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID_HERE",
-            storageBucket: "YOUR_PROJECT_ID.appspot.com",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID_HERE",
-            appId: "YOUR_APP_ID_HERE"
+            apiKey: "AIzaSyBeL_RP3j8HoKCQLRrQtSMrW3aHOhplL-4",
+            authDomain: "our-savings-app.firebaseapp.com",
+            projectId: "our-savings-app",
+            storageBucket: "our-savings-app.firebasestorage.app",
+            messagingSenderId: "425975640293",
+            appId: "1:425975640293:web:93c90879946cad8600a40c"
         };
 
         function getFirebaseConfig() {

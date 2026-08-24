@@ -94,7 +94,7 @@
 
             <div class="flex flex-wrap items-center gap-2">
                 <button onclick="openSyncModal()" id="syncRoomBtn" class="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer" title="Manage Live Device Sync Room">
-                    <span id="syncPulse" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span id="syncPulse" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
                     <i data-lucide="cloud" class="w-4 h-4 text-rose-600"></i>
                     Room: <span id="displaySyncRoom" class="font-bold">our-savings-tracker</span>
                     <i data-lucide="pencil" class="w-3 h-3 text-rose-400 opacity-80"></i>
@@ -168,18 +168,27 @@
 
     <!-- Modals -->
     <div id="syncModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center hidden p-4">
-        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-slate-100 space-y-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
             <div class="flex items-center justify-between">
                 <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    <i data-lucide="wifi" class="w-5 h-5 text-rose-600"></i> Pair Devices / Room
+                    <i data-lucide="wifi" class="w-5 h-5 text-rose-600"></i> Pair Devices & Live Sync
                 </h3>
                 <button onclick="closeSyncModal()" class="text-slate-400 hover:text-slate-600">
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>
-            <p class="text-xs text-slate-500 leading-relaxed">
-                Enter the same <strong>Room Code</strong> on both your phone and your girlfriend's phone to connect and view updates in real-time! 💕
-            </p>
+
+            <!-- Sync Status Banner -->
+            <div id="syncStatusBanner" class="p-3 rounded-xl border text-xs flex items-start gap-2.5 bg-amber-50 border-amber-200 text-amber-900">
+                <i data-lucide="alert-circle" class="w-4 h-4 text-amber-600 shrink-0 mt-0.5"></i>
+                <div>
+                    <span class="font-bold block" id="syncStatusTitle">Local Storage Mode</span>
+                    <span id="syncStatusDesc" class="text-2xs text-amber-700 leading-snug block">
+                        Changes are saved on this phone only. To sync live across multiple phones on GitHub Pages, add your free Firebase config below!
+                    </span>
+                </div>
+            </div>
+
             <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">Room Code / Sync Key:</label>
                 <div class="flex gap-2">
@@ -189,7 +198,37 @@
                     </button>
                 </div>
             </div>
-            <div class="flex items-center justify-end gap-2 pt-2">
+
+            <!-- Firebase Configuration Accordion / Toggle -->
+            <div class="pt-2 border-t border-slate-100">
+                <button onclick="toggleFirebaseConfigSection()" class="w-full flex items-center justify-between text-xs font-bold text-slate-700 hover:text-rose-600 transition py-1">
+                    <span class="flex items-center gap-1.5">
+                        <i data-lucide="database" class="w-4 h-4 text-indigo-600"></i>
+                        Firebase Cloud Credentials Setup
+                    </span>
+                    <i data-lucide="chevron-down" id="fbConfigChevron" class="w-4 h-4 transition-transform"></i>
+                </button>
+
+                <div id="firebaseConfigSection" class="mt-3 space-y-3 hidden bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    <p class="text-2xs text-slate-600 leading-relaxed">
+                        Paste your <strong>Firebase Web Config</strong> (JSON object or JavaScript object format from Firebase Console) to enable real-time synchronization across devices:
+                    </p>
+                    <textarea id="firebaseConfigInput" rows="5" class="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-2xs focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder='{
+  "apiKey": "AIzaSy...",
+  "authDomain": "your-app.firebaseapp.com",
+  "projectId": "your-app",
+  "storageBucket": "your-app.firebasestorage.app",
+  "messagingSenderId": "123456789",
+  "appId": "1:123456789:web:abcdef"
+}'></textarea>
+                    <div class="flex gap-2 justify-end">
+                        <button onclick="clearFirebaseConfig()" class="px-3 py-1.5 text-rose-600 hover:bg-rose-50 rounded-lg text-2xs font-semibold">Clear Config</button>
+                        <button onclick="saveCustomFirebaseConfig()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-2xs font-semibold shadow-xs">Save Credentials</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                 <button onclick="closeSyncModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-xs font-semibold">Cancel</button>
                 <button onclick="saveSyncRoom()" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5">
                     <i data-lucide="cloud-lightning" class="w-4 h-4"></i> Connect & Sync
@@ -298,16 +337,53 @@
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Environment variables setup
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'for-us-savings-tracker';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-
+        
         let db = null;
         let auth = null;
         let unsubscribeSync = null;
         let isSyncingFromCloud = false;
 
         let currentRoomId = localStorage.getItem('savings_tracker_room_id') || 'our-savings-tracker';
+
+        // =========================================================================
+        // ⚡ HARDCODED FIREBASE CONFIGURATION
+        // Paste your Firebase Web App credentials between the quotes below.
+        // Once saved, every phone/device opening this URL will sync automatically!
+        // =========================================================================
+        const HARDCODED_FIREBASE_CONFIG = {
+            apiKey: "YOUR_API_KEY_HERE",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID_HERE",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID_HERE",
+            appId: "YOUR_APP_ID_HERE"
+        };
+
+        function getFirebaseConfig() {
+            // 1. Check if user saved custom credentials via the settings modal
+            const savedConfig = localStorage.getItem('savings_tracker_firebase_config');
+            if (savedConfig) {
+                try {
+                    return JSON.parse(savedConfig);
+                } catch(e) {
+                    console.error("Error parsing saved Firebase config:", e);
+                }
+            }
+
+            // 2. Check if the hardcoded configuration above has been filled out
+            if (HARDCODED_FIREBASE_CONFIG && HARDCODED_FIREBASE_CONFIG.apiKey && HARDCODED_FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY_HERE") {
+                return HARDCODED_FIREBASE_CONFIG;
+            }
+
+            // 3. Fallback to environment-injected config if available
+            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                try {
+                    return typeof __firebase_config === 'string' ? JSON.parse(__firebase_config) : __firebase_config;
+                } catch(e) {}
+            }
+            return null;
+        }
 
         async function saveToCloud() {
             if (!db || !auth || !auth.currentUser || isSyncingFromCloud) return;
@@ -323,6 +399,25 @@
             }
         }
         window.saveToCloud = saveToCloud;
+
+        function updateSyncUIStatus(isOnline) {
+            const pulse = document.getElementById('syncPulse');
+            const banner = document.getElementById('syncStatusBanner');
+            const title = document.getElementById('syncStatusTitle');
+            const desc = document.getElementById('syncStatusDesc');
+
+            if (isOnline) {
+                if (pulse) pulse.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
+                if (banner) banner.className = 'p-3 rounded-xl border text-xs flex items-start gap-2.5 bg-emerald-50 border-emerald-200 text-emerald-900';
+                if (title) title.textContent = 'Live Cloud Sync Active 💕';
+                if (desc) desc.textContent = `Connected to room "${currentRoomId}". Updates on either phone will sync automatically in real-time.`;
+            } else {
+                if (pulse) pulse.className = 'w-2 h-2 rounded-full bg-amber-500 animate-pulse';
+                if (banner) banner.className = 'p-3 rounded-xl border text-xs flex items-start gap-2.5 bg-amber-50 border-amber-200 text-amber-900';
+                if (title) title.textContent = 'Local Storage Mode (Standalone)';
+                if (desc) desc.textContent = `Changes save locally on this device. To enable cross-device sync on GitHub Pages, paste your free Firebase config in the section below.`;
+            }
+        }
 
         function setupRealtimeSync(roomId) {
             if (!db || !auth || !auth.currentUser) return;
@@ -345,11 +440,12 @@
                         isSyncingFromCloud = false;
                     }
                 } else {
-                    // Seed initial data to cloud if room is newly created
                     saveToCloud();
                 }
+                updateSyncUIStatus(true);
             }, (error) => {
                 console.error("Firestore sync error:", error);
+                updateSyncUIStatus(false);
             });
         }
 
@@ -357,8 +453,10 @@
             const roomDisplay = document.getElementById('displaySyncRoom');
             if (roomDisplay) roomDisplay.textContent = currentRoomId;
 
+            const firebaseConfig = getFirebaseConfig();
+
             if (!firebaseConfig) {
-                console.warn("Firebase configuration not available. Local storage mode active.");
+                updateSyncUIStatus(false);
                 return;
             }
 
@@ -374,19 +472,82 @@
                 }
 
                 setupRealtimeSync(currentRoomId);
+                updateSyncUIStatus(true);
             } catch (err) {
                 console.error("Initialization error:", err);
+                updateSyncUIStatus(false);
             }
         }
 
         window.openSyncModal = function() {
             const input = document.getElementById('syncRoomInput');
             if (input) input.value = currentRoomId;
+
+            const savedConfig = localStorage.getItem('savings_tracker_firebase_config');
+            const textarea = document.getElementById('firebaseConfigInput');
+            if (textarea && savedConfig) {
+                textarea.value = savedConfig;
+            }
+
             document.getElementById('syncModal').classList.remove('hidden');
         };
 
         window.closeSyncModal = function() {
             document.getElementById('syncModal').classList.add('hidden');
+        };
+
+        window.toggleFirebaseConfigSection = function() {
+            const section = document.getElementById('firebaseConfigSection');
+            const chevron = document.getElementById('fbConfigChevron');
+            if (section) {
+                section.classList.toggle('hidden');
+                if (chevron) chevron.classList.toggle('rotate-180');
+            }
+        };
+
+        window.saveCustomFirebaseConfig = function() {
+            const textarea = document.getElementById('firebaseConfigInput');
+            let rawText = textarea ? textarea.value.trim() : '';
+
+            if (!rawText) {
+                window.showToast("Please enter a valid Firebase configuration JSON", "error");
+                return;
+            }
+
+            // Clean JS object string if copied straight from console
+            if (rawText.startsWith('const firebaseConfig =') || rawText.startsWith('var firebaseConfig =')) {
+                rawText = rawText.replace(/^.*=\s*/, '').replace(/;$/, '');
+            }
+
+            try {
+                // Validate JSON formatting
+                let parsed = null;
+                try {
+                    parsed = JSON.parse(rawText);
+                } catch(e) {
+                    // Fix unquoted keys if copied from standard JS object
+                    const jsonified = rawText.replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":').replace(/'/g, '"');
+                    parsed = JSON.parse(jsonified);
+                }
+
+                if (parsed && parsed.apiKey && parsed.projectId) {
+                    localStorage.setItem('savings_tracker_firebase_config', JSON.stringify(parsed));
+                    initCloudSync();
+                    window.showToast("Firebase credentials saved! Connecting...");
+                } else {
+                    window.showToast("Config missing apiKey or projectId.", "error");
+                }
+            } catch(err) {
+                window.showToast("Invalid JSON format. Check brackets and quotes.", "error");
+            }
+        };
+
+        window.clearFirebaseConfig = function() {
+            localStorage.removeItem('savings_tracker_firebase_config');
+            const textarea = document.getElementById('firebaseConfigInput');
+            if (textarea) textarea.value = '';
+            updateSyncUIStatus(false);
+            window.showToast("Firebase credentials removed.");
         };
 
         window.saveSyncRoom = function() {
@@ -413,7 +574,6 @@
             }
         };
 
-        // Initialize Firebase on DOM ready
         document.addEventListener('DOMContentLoaded', initCloudSync);
     </script>
 
@@ -483,7 +643,6 @@
             } else {
                 appData = JSON.parse(JSON.stringify(defaultData));
             }
-            appData.dates = appData.dates.filter(d => d !== "August 21, 2026" && d !== "August 22, 2026");
             window.appData = appData;
             populateMonthSelectOptions();
             renderAll(false);
@@ -1099,7 +1258,75 @@
 
             closeAddMonthModal();
         }
-<!-- ... existing code ... baseline save settings modal -->
+
+        function setFilter(filter) {
+            activeFilter = filter;
+            document.querySelectorAll('#btnFilterAll, #btnFilterMonth, #btnFilterWeek, #btnFilterMissed').forEach(btn => {
+                btn.className = 'px-3 py-1 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-900';
+            });
+            const activeBtnMap = {
+                all: 'btnFilterAll',
+                month: 'btnFilterMonth',
+                week: 'btnFilterWeek',
+                missed: 'btnFilterMissed'
+            };
+            const activeBtn = document.getElementById(activeBtnMap[filter]);
+            if (activeBtn) {
+                activeBtn.className = 'px-3 py-1 text-xs font-semibold rounded-md bg-white text-slate-800 shadow-xs';
+            }
+            renderAll(false);
+        }
+
+        function handleMonthFilterChange(val) {
+            currentMonthFilter = val;
+            renderAll(false);
+        }
+
+        function jumpToToday() {
+            currentMonthFilter = 'all';
+            activeFilter = 'all';
+            document.getElementById('monthSelect').value = 'all';
+            setFilter('all');
+
+            setTimeout(() => {
+                const target = document.getElementById(orientation === 'horizontal' ? 'today-col' : 'today-row');
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'center' });
+                    showToast("Jumped to Today!");
+                } else {
+                    showToast("Today's date is not in the list.", 'error');
+                }
+            }, 100);
+        }
+
+        function toggleOrientation() {
+            orientation = orientation === 'horizontal' ? 'vertical' : 'horizontal';
+            renderAll(false);
+            showToast(`Switched to ${orientation} view.`);
+        }
+
+        function changeRate() {
+            document.getElementById('settingsModalTitle').innerHTML = `<i data-lucide="coins" class="w-5 h-5 text-emerald-600"></i> Change Daily Rate`;
+            document.getElementById('settingsModalLabel').textContent = "Daily Contribution Amount (₱):";
+            const input = document.getElementById('settingsModalInput');
+            input.value = appData.dailyRate;
+            input.dataset.type = 'rate';
+            document.getElementById('editSettingsModal').classList.remove('hidden');
+        }
+
+        function changeInterest() {
+            document.getElementById('settingsModalTitle').innerHTML = `<i data-lucide="trending-up" class="w-5 h-5 text-indigo-600"></i> Change Interest Rate`;
+            document.getElementById('settingsModalLabel').textContent = "Annual Interest / Yield Rate (%):";
+            const input = document.getElementById('settingsModalInput');
+            input.value = appData.interestRate;
+            input.dataset.type = 'interest';
+            document.getElementById('editSettingsModal').classList.remove('hidden');
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('editSettingsModal').classList.add('hidden');
+        }
+
         function saveSettingsModal() {
             const input = document.getElementById('settingsModalInput');
             const type = input.dataset.type;
@@ -1118,7 +1345,31 @@
             }
             closeSettingsModal();
         }
-<!-- ... existing code ... baseline backup import -->
+
+        function toggleTheme() {
+            const body = document.body;
+            body.classList.toggle('dark-theme');
+            const isDark = body.classList.contains('dark-theme');
+            localStorage.setItem('contributionTrackerTheme', isDark ? 'dark' : 'light');
+            
+            const themeIcon = document.getElementById('themeIcon');
+            if (themeIcon) {
+                themeIcon.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
+                if (window.lucide) lucide.createIcons();
+            }
+        }
+
+        function exportJSONBackup() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `for_us_savings_backup_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+            showToast("Backup downloaded!");
+        }
+
         function importJSONBackup(event) {
             const file = event.target.files[0];
             if (!file) return;

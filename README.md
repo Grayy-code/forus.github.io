@@ -6,7 +6,7 @@
     <title>For Us 💕 - Savings & Contribution Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -57,6 +57,10 @@
             border-color: #475569 !important;
             color: #f8fafc !important;
         }
+        body.dark-theme textarea::placeholder,
+        body.dark-theme input::placeholder {
+            color: #64748b !important;
+        }
         .custom-scrollbar::-webkit-scrollbar {
             height: 8px;
             width: 8px;
@@ -75,18 +79,9 @@
         body.dark-theme .custom-scrollbar::-webkit-scrollbar-thumb {
             background: #475569;
         }
-        @keyframes toastIn {
-            from { transform: translateY(-100%); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        .animate-toast {
-            animation: toastIn 0.3s ease-out forwards;
-        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen pb-12">
-
-    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2 pointer-events-none"></div>
 
     <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
         <div class="max-w-7xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-4">
@@ -94,14 +89,15 @@
                 <h1 class="text-2xl font-black text-rose-600 flex items-center gap-2">
                     For Us 💕
                 </h1>
-                <p class="text-xs text-slate-500 font-medium mt-0.5">For our Future • Shared Savings</p>
+                <p class="text-xs text-slate-500 font-medium mt-0.5">For our Future</p>
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
-                <!-- Sync status button -->
-                <button onclick="openSyncModal()" id="btnSyncStatus" class="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span id="syncStatusText">Cloud Live</span>
+                <button onclick="openSyncModal()" id="syncRoomBtn" class="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer" title="Manage Live Device Sync Room">
+                    <span id="syncPulse" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                    <i data-lucide="cloud" class="w-4 h-4 text-rose-600"></i>
+                    Room: <span id="displaySyncRoom" class="font-bold">our-savings-tracker</span>
+                    <i data-lucide="pencil" class="w-3 h-3 text-rose-400 opacity-80"></i>
                 </button>
                 <button onclick="changeRate()" class="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
                     <i data-lucide="coins" class="w-4 h-4 text-emerald-600"></i>
@@ -170,6 +166,76 @@
         </div>
     </main>
 
+    <!-- Sync Modal -->
+    <div id="syncModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i data-lucide="wifi" class="w-5 h-5 text-rose-600"></i> Pair Devices & Live Sync
+                </h3>
+                <button onclick="closeSyncModal()" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Sync Status Banner -->
+            <div id="syncStatusBanner" class="p-3 rounded-xl border text-xs flex items-start gap-2.5 bg-amber-50 border-amber-200 text-amber-900">
+                <i data-lucide="alert-circle" class="w-4 h-4 text-amber-600 shrink-0 mt-0.5"></i>
+                <div>
+                    <span class="font-bold block" id="syncStatusTitle">Local Storage Mode</span>
+                    <span id="syncStatusDesc" class="text-2xs text-amber-700 leading-snug block">
+                        Changes are saved on this device only. Set up live sync below!
+                    </span>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Room Code / Sync Key:</label>
+                <div class="flex gap-2">
+                    <input type="text" id="syncRoomInput" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm font-mono focus:ring-2 focus:ring-rose-500 focus:outline-none" placeholder="e.g. matt-and-tif-2026">
+                    <button onclick="copySyncCode()" class="px-3 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 text-xs font-semibold flex items-center gap-1 shrink-0" title="Copy code">
+                        <i data-lucide="copy" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="pt-2 border-t border-slate-100">
+                <button onclick="toggleFirebaseConfigSection()" class="w-full flex items-center justify-between text-xs font-bold text-slate-700 hover:text-rose-600 transition py-1">
+                    <span class="flex items-center gap-1.5">
+                        <i data-lucide="database" class="w-4 h-4 text-indigo-600"></i>
+                        Firebase Cloud Credentials Setup
+                    </span>
+                    <i data-lucide="chevron-down" id="fbConfigChevron" class="w-4 h-4 transition-transform"></i>
+                </button>
+
+                <div id="firebaseConfigSection" class="mt-3 space-y-3 hidden bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    <p class="text-2xs text-slate-600 leading-relaxed">
+                        Paste your <strong>Firebase Web Config</strong> (JSON object) to enable real-time synchronization across devices:
+                    </p>
+                    <textarea id="firebaseConfigInput" rows="5" class="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-2xs focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder='{
+  "apiKey": "AIzaSy...",
+  "authDomain": "your-app.firebaseapp.com",
+  "projectId": "your-app",
+  "storageBucket": "your-app.firebasestorage.app",
+  "messagingSenderId": "123456789",
+  "appId": "1:123456789:web:abcdef"
+}'></textarea>
+                    <div class="flex gap-2 justify-end">
+                        <button onclick="clearFirebaseConfig()" class="px-3 py-1.5 text-rose-600 hover:bg-rose-50 rounded-lg text-2xs font-semibold">Clear Config</button>
+                        <button onclick="saveCustomFirebaseConfig()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-2xs font-semibold shadow-xs">Save Credentials</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button onclick="closeSyncModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-xs font-semibold">Cancel</button>
+                <button onclick="saveSyncRoom()" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5">
+                    <i data-lucide="cloud-lightning" class="w-4 h-4"></i> Connect & Sync
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Edit Settings Modal -->
     <div id="editSettingsModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center hidden p-4">
         <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-slate-100 space-y-4">
@@ -192,7 +258,7 @@
         </div>
     </div>
 
-    <!-- Note Modal -->
+    <!-- Notes Modal -->
     <div id="noteModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center hidden p-4">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-100 space-y-4">
             <div class="flex items-center justify-between">
@@ -208,7 +274,7 @@
                 <textarea id="modalNoteText" rows="4" class="w-full border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Add optional details or notes..."></textarea>
             </div>
             <div class="flex items-center justify-between pt-2">
-                <button id="btnDeleteNote" onclick="deleteModalNote()" class="px-3 py-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg text-xs font-semibold flex items-center gap-1 transition">
+                <button id="btnDeleteNote" onclick="deleteModalNote()" class="px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-lg text-xs font-semibold flex items-center gap-1 transition">
                     <i data-lucide="trash-2" class="w-4 h-4"></i> Delete Note
                 </button>
                 <div class="flex items-center gap-2">
@@ -263,73 +329,18 @@
         </div>
     </div>
 
-    <!-- Sync & Room Modal -->
-    <div id="syncModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center hidden p-4">
-        <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-100 dark:border-slate-700 space-y-4">
-            <div class="flex items-center justify-between">
-                <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                    <i data-lucide="radio" class="w-5 h-5 text-emerald-600"></i> Pair Devices / Room Code
-                </h3>
-                <button onclick="closeSyncModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
-            </div>
-            <p class="text-xs text-slate-500 dark:text-slate-400">
-                Type the exact same <strong>Room Code</strong> on both phones/devices to sync updates in real time.
-            </p>
-            <div>
-                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Room Code:</label>
-                <input type="text" id="roomCodeInput" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl p-2.5 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="e.g. matt-and-tif-2026">
-            </div>
-            
-            <div id="cloudDiagnostic" class="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-700 text-xs space-y-1.5">
-                <div class="font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between">
-                    <span class="flex items-center gap-1.5">
-                        <span id="diagnosticDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
-                        Status: <span id="diagnosticStatus">Checking connection...</span>
-                    </span>
-                    <button onclick="forceCloudSync()" class="text-xs text-emerald-600 hover:underline font-semibold flex items-center gap-1">
-                        <i data-lucide="refresh-cw" class="w-3 h-3"></i> Sync Now
-                    </button>
-                </div>
-                <div id="diagnosticDetail" class="text-slate-500 dark:text-slate-400 text-2xs break-all"></div>
-            </div>
-
-            <!-- Optional Firebase Custom Config Accordion -->
-            <details class="text-xs text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700 pt-3">
-                <summary class="font-semibold cursor-pointer hover:text-emerald-600 transition flex items-center gap-1">
-                    <i data-lucide="settings" class="w-3.5 h-3.5"></i> Custom Firebase Config (GitHub Pages)
-                </summary>
-                <div class="space-y-2 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                    <p class="text-2xs text-slate-400">If hosting on your own domain/GitHub Pages and cloud sync fails, paste your Firebase JSON config here:</p>
-                    <textarea id="customFirebaseConfigInput" rows="3" class="w-full text-3xs font-mono p-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none" placeholder='{"apiKey": "...", "projectId": "..."}'></textarea>
-                    <button onclick="saveCustomFirebaseConfig()" class="px-3 py-1 bg-slate-800 text-white rounded text-2xs font-semibold hover:bg-slate-700">Save Custom Config</button>
-                </div>
-            </details>
-
-            <div class="flex items-center justify-end gap-2 pt-2">
-                <button onclick="closeSyncModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-xs font-semibold">Close</button>
-                <button onclick="saveRoomCode()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs">Save & Connect</button>
-            </div>
-        </div>
+    <!-- Non-intrusive Toast Notification -->
+    <div id="toastNotification" class="fixed bottom-5 right-5 z-50 bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 transition-all duration-300 opacity-0 pointer-events-none transform translate-y-2">
+        <i id="toastIcon" data-lucide="check-circle-2" class="w-5 h-5"></i>
+        <span id="toastText" class="text-xs font-semibold"></span>
     </div>
 
     <script type="module">
         import { initializeApp, getApps, getApp, deleteApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Hardcoded fallback Firebase configuration
-        const defaultFirebaseConfig = {
-            apiKey: "AIzaSyBeL_RP3j8HoKCQLRrQtSMrW3aHOhplL-4",
-            authDomain: "our-savings-app.firebaseapp.com",
-            databaseURL: "https://our-savings-app-default-rtdb.firebaseio.com",
-            projectId: "our-savings-app",
-            storageBucket: "our-savings-app.firebasestorage.app",
-            messagingSenderId: "425975640293",
-            appId: "1:425975640293:web:93c90879946cad8600a40c",
-            measurementId: "G-5MHPDSCL33"
-        };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'for-us-savings-tracker';
 
         const defaultData = {
             dailyRate: 20,
@@ -346,187 +357,227 @@
                 "September 25, 2026", "September 26, 2026"
             ],
             cells: {
-                "r0_c2": { status: "done", checked: true, timestamp: "Aug 25, 09:30 AM", notes: "Saved ₱20" },
-                "r1_c2": { status: "done", checked: true, timestamp: "Aug 25, 10:15 AM", notes: "Saved ₱20" }
+                "r0_c2": { status: "done", checked: true, timestamp: "Aug 25 · 09:30 AM", notes: "Saved ₱20" },
+                "r1_c2": { status: "done", checked: true, timestamp: "Aug 25 · 10:15 AM", notes: "Saved ₱20" }
             }
         };
+
+        const HARDCODED_FIREBASE_CONFIG = {
+            apiKey: "AIzaSyBeL_RP3j8HoKCQLRrQtSMrW3aHOhplL-4",
+            authDomain: "our-savings-app.firebaseapp.com",
+            databaseURL: "https://our-savings-app-default-rtdb.firebaseio.com",
+            projectId: "our-savings-app",
+            storageBucket: "our-savings-app.firebasestorage.app",
+            messagingSenderId: "425975640293",
+            appId: "1:425975640293:web:93c90879946cad8600a40c",
+            measurementId: "G-5MHPDSCL33"
+        };
+
+        let db = null;
+        let auth = null;
+        let unsubscribeSync = null;
+        let isSyncingFromCloud = false;
 
         let appData = JSON.parse(JSON.stringify(defaultData));
         window.appData = appData;
 
         let activeFilter = 'all'; 
         let currentMonthFilter = 'all'; 
-        let orientation = 'horizontal'; 
-        let currentModalTarget = null;
+        let orientation = localStorage.getItem('savings_tracker_orientation') || 'vertical'; 
+        let currentModalTarget = null; 
+        let currentRoomId = localStorage.getItem('savings_tracker_room_id') || 'our-savings-tracker';
 
-        // Firebase Sync variables
-        let app = null;
-        let db = null;
-        let auth = null;
-        let unsubscribeSnapshot = null;
-        let isCloudConnected = false;
-        let currentRoomCode = localStorage.getItem('savings_room_code') || 'our-savings-tracker';
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'savings-tracker-app';
+        function showToast(msg, iconType = 'check') {
+            const toast = document.getElementById('toastNotification');
+            const toastText = document.getElementById('toastText');
+            const toastIcon = document.getElementById('toastIcon');
+            if (!toast || !toastText) return;
 
-        function showToast(message, type = 'info') {
-            const container = document.getElementById('toastContainer');
-            if (!container) return;
-            const toast = document.createElement('div');
-            const bg = type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-rose-600' : 'bg-slate-800';
-            toast.className = `${bg} text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 animate-toast pointer-events-auto`;
-            toast.innerHTML = `<span>${message}</span>`;
-            container.appendChild(toast);
+            toastText.textContent = msg;
+            if (toastIcon) {
+                toastIcon.setAttribute('data-lucide', iconType === 'error' ? 'alert-circle' : 'check-circle-2');
+                if (window.lucide) lucide.createIcons();
+            }
+
+            toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-2');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
             setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transition = 'opacity 0.3s ease';
-                setTimeout(() => toast.remove(), 300);
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-2');
             }, 3000);
         }
         window.showToast = showToast;
 
-        function saveLocalData() {
-            localStorage.setItem('contributionTrackerData', JSON.stringify(appData));
-            if (isCloudConnected && db) {
-                saveToCloud();
+        function escapeHtml(text) {
+            if (!text) return '';
+            return String(text)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function getFirebaseConfig() {
+            const savedConfig = localStorage.getItem('savings_tracker_firebase_config');
+            if (savedConfig) {
+                try {
+                    return JSON.parse(savedConfig);
+                } catch(e) {}
+            }
+            if (HARDCODED_FIREBASE_CONFIG && HARDCODED_FIREBASE_CONFIG.apiKey) {
+                return HARDCODED_FIREBASE_CONFIG;
+            }
+            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                try {
+                    return typeof __firebase_config === 'string' ? JSON.parse(__firebase_config) : __firebase_config;
+                } catch(e) {}
+            }
+            return null;
+        }
+
+        function updateSyncUIStatus(status, message = '') {
+            const pulse = document.getElementById('syncPulse');
+            const title = document.getElementById('syncStatusTitle');
+            const desc = document.getElementById('syncStatusDesc');
+
+            if (!pulse || !title || !desc) return;
+
+            if (status === 'live') {
+                pulse.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
+                title.textContent = "Live Cloud Sync Active";
+                desc.textContent = `Real-time updates enabled in Room: ${currentRoomId}`;
+            } else if (status === 'connecting') {
+                pulse.className = "w-2 h-2 rounded-full bg-amber-500 animate-pulse";
+                title.textContent = "Connecting to Cloud...";
+                desc.textContent = "Establishing live database connection.";
+            } else if (status === 'error') {
+                pulse.className = "w-2 h-2 rounded-full bg-rose-500";
+                title.textContent = "Sync Connection Issue";
+                desc.textContent = message || "Could not connect to Firebase cloud. Running in local storage mode.";
+            } else {
+                pulse.className = "w-2 h-2 rounded-full bg-slate-400";
+                title.textContent = "Local Storage Mode";
+                desc.textContent = "Data is saved locally on this device.";
             }
         }
-        window.saveLocalData = saveLocalData;
 
         async function saveToCloud() {
-            if (!db || !auth || !auth.currentUser) return;
+            if (!db || isSyncingFromCloud) return;
             try {
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomCode);
-                await setDoc(docRef, { appData, lastUpdated: new Date().toISOString() }, { merge: true });
-                updateSyncUI(true, `Connected to Room: "${currentRoomCode}"`);
+                const trackerRef = doc(db, 'artifacts', appId, 'public', 'data', 'trackers', currentRoomId);
+                await setDoc(trackerRef, {
+                    data: window.appData,
+                    updatedAt: new Date().toISOString(),
+                    updatedBy: auth?.currentUser?.uid || 'anonymous'
+                }, { merge: true });
             } catch (err) {
-                console.warn("Cloud save warning:", err.message);
-                updateSyncUI(false, "Sync Error (Saved Locally)", err.message);
+                console.error("Failed to sync to cloud:", err);
             }
         }
+        window.saveToCloud = saveToCloud;
 
-        async function initFirebase() {
-            updateSyncUI(false, "Connecting to cloud room...");
-            try {
-                if (getApps().length > 0) {
-                    if (unsubscribeSnapshot) unsubscribeSnapshot();
-                    const currentApp = getApp();
-                    await deleteApp(currentApp);
-                }
-
-                // Prioritize platform config, then custom saved config, then fallback
-                let activeConfig = defaultFirebaseConfig;
-                if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-                    activeConfig = JSON.parse(__firebase_config);
-                } else {
-                    const savedCustom = localStorage.getItem('custom_firebase_config');
-                    if (savedCustom) {
-                        try {
-                            activeConfig = JSON.parse(savedCustom);
-                        } catch (e) {
-                            console.warn("Failed to parse custom config", e);
-                        }
-                    }
-                }
-
-                app = initializeApp(activeConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-
-                // Authenticate safely
-                let currentUser = null;
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    try {
-                        const res = await signInWithCustomToken(auth, __initial_auth_token);
-                        currentUser = res.user;
-                    } catch (e) {
-                        const res = await signInAnonymously(auth).catch(() => null);
-                        currentUser = res ? res.user : null;
-                    }
-                } else {
-                    const res = await signInAnonymously(auth).catch(() => null);
-                    currentUser = res ? res.user : null;
-                }
-
-                if (currentUser) {
-                    listenToCloudRoom();
-                } else {
-                    updateSyncUI(false, "Offline Mode (Auth Failed)", "Could not sign in anonymously.");
-                }
-            } catch (err) {
-                console.error("Firebase init failed:", err);
-                updateSyncUI(false, "Offline Mode (Local Storage)", err.message);
-            }
-        }
-
-        function listenToCloudRoom() {
+        function setupRealtimeSync(roomId) {
             if (!db) return;
-            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomCode);
-            
-            unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
+            const trackerRef = doc(db, 'artifacts', appId, 'public', 'data', 'trackers', roomId);
+
+            updateSyncUIStatus('connecting');
+
+            unsubscribeSync = onSnapshot(trackerRef, (docSnap) => {
                 if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    if (data && data.appData) {
-                        appData = data.appData;
-                        window.appData = appData;
-                        saveLocalDataToStorageOnly();
+                    const cloudDoc = docSnap.data();
+                    if (cloudDoc && cloudDoc.data) {
+                        isSyncingFromCloud = true;
+                        window.appData = Object.assign({}, defaultData, cloudDoc.data);
+                        appData = window.appData;
+
+                        saveLocalData();
                         populateMonthSelectOptions();
                         renderAll(true);
+
+                        isSyncingFromCloud = false;
+                        updateSyncUIStatus('live');
                     }
                 } else {
-                    // Initialize cloud room with local data
+                    updateSyncUIStatus('live');
                     saveToCloud();
                 }
-                isCloudConnected = true;
-                updateSyncUI(true, `Connected to Room: "${currentRoomCode}"`);
-            }, (err) => {
-                console.warn("Firestore snapshot error:", err);
-                updateSyncUI(false, "Sync issue - Local mode active", err.message);
+            }, (error) => {
+                console.warn("Realtime sync error:", error);
+                updateSyncUIStatus('error', error.message || 'Permission denied or network offline.');
             });
         }
 
-        function forceCloudSync() {
-            if (!isCloudConnected) {
-                initFirebase();
-            } else {
-                saveToCloud();
-            }
-            showToast("Sync requested...", "info");
-        }
-        window.forceCloudSync = forceCloudSync;
+        async function initCloudSync() {
+            const roomDisplay = document.getElementById('displaySyncRoom');
+            if (roomDisplay) roomDisplay.textContent = currentRoomId;
 
-        function saveCustomFirebaseConfig() {
-            const text = document.getElementById('customFirebaseConfigInput').value.trim();
-            if (!text) return;
+            const firebaseConfig = getFirebaseConfig();
+
+            if (!firebaseConfig || !firebaseConfig.apiKey) {
+                updateSyncUIStatus('offline');
+                return;
+            }
+
             try {
-                const parsed = JSON.parse(text);
-                if (parsed.projectId && parsed.apiKey) {
-                    localStorage.setItem('custom_firebase_config', JSON.stringify(parsed));
-                    showToast("Custom Firebase config saved! Reconnecting...", "success");
-                    initFirebase();
-                } else {
-                    showToast("Invalid config format: missing apiKey or projectId.", "error");
+                if (unsubscribeSync) {
+                    unsubscribeSync();
+                    unsubscribeSync = null;
                 }
-            } catch (e) {
-                showToast("Invalid JSON syntax.", "error");
+
+                if (getApps().length > 0) {
+                    await deleteApp(getApp());
+                }
+
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                let authenticated = false;
+
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    try {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                        authenticated = true;
+                    } catch (tErr) {}
+                }
+
+                if (!authenticated) {
+                    try {
+                        await signInAnonymously(auth);
+                    } catch (aErr) {
+                        console.warn("Anonymous sign-in skipped/failed:", aErr.message);
+                    }
+                }
+
+                setupRealtimeSync(currentRoomId);
+            } catch (err) {
+                console.error("Initialization error:", err);
+                updateSyncUIStatus('error', err.message || "Failed to connect to Firebase.");
             }
         }
-        window.saveCustomFirebaseConfig = saveCustomFirebaseConfig;
 
-        function saveLocalDataToStorageOnly() {
-            localStorage.setItem('contributionTrackerData', JSON.stringify(appData));
+        function loadLocalData() {
+            const saved = localStorage.getItem('contributionTrackerData');
+            if (saved) {
+                try {
+                    appData = JSON.parse(saved);
+                    if (appData.dailyRate === undefined) appData.dailyRate = 20;
+                    if (appData.interestRate === undefined) appData.interestRate = 3;
+                } catch (e) {
+                    appData = JSON.parse(JSON.stringify(defaultData));
+                }
+            } else {
+                appData = JSON.parse(JSON.stringify(defaultData));
+            }
+            window.appData = appData;
+            populateMonthSelectOptions();
+            renderAll();
         }
 
-        function updateSyncUI(connected, statusText, detailText = "") {
-            isCloudConnected = connected;
-            const btnText = document.getElementById('syncStatusText');
-            const diagDot = document.getElementById('diagnosticDot');
-            const diagStatus = document.getElementById('diagnosticStatus');
-            const diagDetail = document.getElementById('diagnosticDetail');
-
-            if (btnText) btnText.textContent = connected ? `Room: ${currentRoomCode}` : 'Local Mode';
-            if (diagDot) diagDot.className = `w-2 h-2 rounded-full ${connected ? 'bg-emerald-500' : 'bg-amber-500'}`;
-            if (diagStatus) diagStatus.textContent = statusText;
-            if (diagDetail) diagDetail.textContent = detailText;
+        function saveLocalData() {
+            localStorage.setItem('contributionTrackerData', JSON.stringify(appData));
         }
 
         function isTodayDate(dateStr) {
@@ -563,7 +614,7 @@
                 const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 appData.cells[cellId].status = 'done';
                 appData.cells[cellId].checked = true;
-                appData.cells[cellId].timestamp = `${dateString}, ${timeString}`;
+                appData.cells[cellId].timestamp = `${dateString} · ${timeString}`;
             } else {
                 appData.cells[cellId].status = '';
                 appData.cells[cellId].checked = false;
@@ -571,6 +622,7 @@
             }
 
             saveLocalData();
+            saveToCloud();
             renderAll(true);
         }
         window.toggleCellCheckbox = toggleCellCheckbox;
@@ -692,16 +744,6 @@
             });
         }
 
-        function escapeHtml(str) {
-            if (!str) return '';
-            return str
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
-
         function createCellTd(pIndex, dIndex, isToday = false) {
             const cellId = getCellId(pIndex, dIndex);
             const cellData = appData.cells[cellId] || { status: '', notes: '', timestamp: '' };
@@ -720,7 +762,7 @@
             if (isChecked) {
                 bgClass = isToday ? 'bg-emerald-100/90' : 'bg-emerald-50/80';
             } else if (isMissed) {
-                bgClass = 'bg-rose-50/60 dark:bg-rose-950/20';
+                bgClass = 'bg-rose-50/60';
             } else if (isToday) {
                 bgClass = 'bg-amber-50/60';
             }
@@ -737,8 +779,8 @@
                    </button>`;
 
             const timeBadge = (isChecked && cellData.timestamp)
-                ? `<span class="text-2xs font-semibold text-emerald-800 bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-200 px-2 py-0.5 rounded-full shadow-xs mt-1 border border-emerald-200/60 dark:border-emerald-800">${cellData.timestamp}</span>`
-                : (isMissed ? `<span class="text-2xs font-semibold text-rose-700 bg-rose-100/80 dark:bg-rose-950 dark:text-rose-300 px-2 py-0.5 rounded-full shadow-xs mt-1 border border-rose-200 dark:border-rose-900">Missed</span>` : '');
+                ? `<span class="text-2xs font-semibold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full shadow-xs mt-1 border border-emerald-200/60">${cellData.timestamp}</span>`
+                : (isMissed ? `<span class="text-2xs font-semibold text-rose-700 bg-rose-100/80 px-2 py-0.5 rounded-full shadow-xs mt-1 border border-rose-200">Missed</span>` : '');
 
             const checkboxBorder = isMissed ? 'border-rose-300 bg-rose-50' : 'border-slate-300';
 
@@ -780,6 +822,7 @@
 
             select.value = currentMonthFilter;
         }
+        window.populateMonthSelectOptions = populateMonthSelectOptions;
 
         function renderHorizontalTable() {
             const container = document.getElementById('tableContainer');
@@ -790,55 +833,53 @@
                     <div class="p-8 text-center text-slate-500 space-y-2">
                         <i data-lucide="check-circle-2" class="w-10 h-10 text-emerald-500 mx-auto opacity-80"></i>
                         <p class="font-bold text-sm text-slate-700">No missed contributions!</p>
-                        <p class="text-xs text-slate-500">Everything is up to date for past dates. 💕</p>
-                    </div>
-                `;
+                        <p class="text-xs text-slate-500">You're completely up to date with your savings goal!</p>
+                    </div>`;
                 return;
             }
 
             let html = `
                 <div class="overflow-x-auto custom-scrollbar">
-                    <table class="w-full border-collapse text-left text-sm">
+                    <table class="w-full text-left border-collapse text-xs">
                         <thead>
-                            <tr class="bg-emerald-700 text-white border-b border-emerald-800">
-                                <th class="p-3 font-bold text-white w-44 min-w-[176px] sticky left-0 bg-emerald-800 z-20 border-r-2 border-emerald-600">Person / Date</th>
-            `;
+                            <tr class="bg-emerald-800 text-white border-b border-emerald-900 font-bold uppercase tracking-wider">
+                                <th class="sticky left-0 z-20 bg-emerald-800 p-3 text-center min-w-[140px] border-r border-emerald-700 shadow-md">
+                                    Date
+                                </th>`;
 
-            filteredIndices.forEach(dIndex => {
-                const dateStr = appData.dates[dIndex];
-                const isToday = isTodayDate(dateStr);
-                const headerBg = isToday ? 'bg-emerald-600 text-amber-300 font-extrabold border-emerald-500' : 'bg-emerald-700 text-emerald-50';
-                const todayBadge = isToday ? `<span class="inline-block text-3xs uppercase tracking-wider text-amber-950 bg-amber-400 px-2 py-0.5 rounded-full font-black mt-1 shadow-xs animate-pulse">TODAY</span>` : '';
-
+            appData.people.forEach((person) => {
                 html += `
-                    <th id="${isToday ? 'today-col' : ''}" class="p-2.5 text-center font-medium min-w-[160px] border-r border-emerald-600/80 ${headerBg}">
-                        <div class="text-xs font-bold">${dateStr}</div>
-                        ${todayBadge}
-                    </th>
-                `;
+                    <th class="p-3 text-center min-w-[160px] border-r border-emerald-700">
+                        <div class="font-extrabold text-sm text-white">${person}</div>
+                    </th>`;
             });
 
-            html += `</tr></thead><tbody>`;
+            html += `</tr></thead><tbody class="divide-y divide-slate-200">`;
 
-            appData.people.forEach((person, pIndex) => {
-                const avatarColor = pIndex === 0 ? 'bg-sky-100 text-sky-600 dark:bg-sky-950 dark:text-sky-300' : 'bg-rose-100 text-rose-600 dark:bg-rose-950 dark:text-rose-300';
-                html += `
-                    <tr class="border-b border-slate-200/70 hover:bg-slate-50/50">
-                        <td class="p-3 font-semibold text-slate-800 dark:text-slate-100 sticky left-0 bg-white dark:bg-slate-800 z-10 border-r-2 border-slate-200 dark:border-slate-700">
-                            <div class="flex items-center gap-2">
-                                <div class="w-8 h-8 rounded-full ${avatarColor} flex items-center justify-center font-bold text-xs shrink-0">
-                                    ${person.charAt(0)}
-                                </div>
-                                <span class="truncate">${person}</span>
-                            </div>
-                        </td>
-                `;
+            filteredIndices.forEach((dIndex) => {
+                const dateStr = appData.dates[dIndex];
+                const isToday = isTodayDate(dateStr);
+                const isPast = isPastDate(dateStr);
 
-                filteredIndices.forEach(dIndex => {
-                    const dateStr = appData.dates[dIndex];
-                    const isToday = isTodayDate(dateStr);
-                    const td = createCellTd(pIndex, dIndex, isToday);
-                    html += td.outerHTML;
+                let dateBg = 'bg-slate-50';
+                let dateBadge = '';
+
+                if (isToday) {
+                    dateBg = 'bg-amber-100 text-amber-900 border-r-2 border-amber-300';
+                    dateBadge = `<span class="block text-2xs font-bold text-amber-700 uppercase tracking-wider">Today</span>`;
+                } else if (isPast) {
+                    dateBg = 'bg-slate-100/80 text-slate-700';
+                }
+
+                html += `<tr id="date-row-${dIndex}" class="hover:bg-slate-50/80 transition">
+                    <th class="sticky left-0 z-10 ${dateBg} p-3 font-semibold text-center border-r border-slate-200 shadow-xs whitespace-nowrap">
+                        <div class="text-xs text-slate-800 font-bold whitespace-nowrap">${dateStr}</div>
+                        ${dateBadge}
+                    </th>`;
+
+                appData.people.forEach((_, pIndex) => {
+                    const tempTd = createCellTd(pIndex, dIndex, isToday);
+                    html += tempTd.outerHTML;
                 });
 
                 html += `</tr>`;
@@ -857,47 +898,54 @@
                     <div class="p-8 text-center text-slate-500 space-y-2">
                         <i data-lucide="check-circle-2" class="w-10 h-10 text-emerald-500 mx-auto opacity-80"></i>
                         <p class="font-bold text-sm text-slate-700">No missed contributions!</p>
-                        <p class="text-xs text-slate-500">Everything is up to date for past dates. 💕</p>
-                    </div>
-                `;
+                        <p class="text-xs text-slate-500">You're completely up to date with your savings goal!</p>
+                    </div>`;
                 return;
             }
 
             let html = `
-                <div class="overflow-x-auto">
-                    <table class="w-full border-collapse text-left text-sm border border-slate-300 dark:border-slate-700">
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left border-collapse text-xs">
                         <thead>
-                            <tr class="bg-emerald-700 text-white border-b-2 border-emerald-800">
-                                <th class="p-3 font-bold text-white bg-emerald-800 border-r-2 border-emerald-600 w-48 min-w-[180px]">Date</th>
-            `;
+                            <tr class="bg-emerald-800 text-white border-b border-emerald-900 font-bold uppercase tracking-wider">
+                                <th class="sticky left-0 z-20 bg-emerald-800 p-3 text-center min-w-[140px] border-r border-emerald-700 shadow-md">
+                                    Contributor
+                                </th>`;
 
-            appData.people.forEach((person, pIndex) => {
-                const avatarColor = pIndex === 0 ? 'bg-sky-100 text-sky-600' : 'bg-rose-100 text-rose-600';
-                html += `
-                    <th class="p-3 font-semibold text-white text-center border-r-2 border-emerald-600 bg-emerald-700 min-w-[160px]">
-                        <div class="flex items-center justify-center gap-1.5">
-                            <span class="w-5 h-5 rounded-full ${avatarColor} inline-flex items-center justify-center text-3xs font-bold">${person.charAt(0)}</span>
-                            <span>${person}</span>
-                        </div>
-                    </th>
-                `;
-            });
-
-            html += `</tr></thead><tbody>`;
-
-            filteredIndices.forEach(dIndex => {
+            filteredIndices.forEach((dIndex) => {
                 const dateStr = appData.dates[dIndex];
                 const isToday = isTodayDate(dateStr);
-                const rowBg = isToday ? 'bg-amber-50/60 dark:bg-amber-950/20 font-medium' : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40';
-                const todayBadge = isToday ? `<span class="inline-block text-3xs uppercase tracking-wider text-amber-950 bg-amber-400 px-2 py-0.5 rounded-full font-black ml-2 shadow-xs animate-pulse">TODAY</span>` : '';
+                const isPast = isPastDate(dateStr);
 
-                html += `<tr id="${isToday ? 'today-row' : ''}" class="border-b-2 border-slate-200 dark:border-slate-700/80 ${rowBg}">`;
-                html += `<td class="p-3 text-slate-800 dark:text-slate-200 font-semibold border-r-2 border-slate-300 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/60">${dateStr} ${todayBadge}</td>`;
+                let headerBg = 'bg-emerald-800 text-white border-emerald-700';
+                let todayIndicator = '';
 
-                appData.people.forEach((_, pIndex) => {
-                    const td = createCellTd(pIndex, dIndex, isToday);
-                    td.className += " border-r-2 border-slate-200 dark:border-slate-700/80";
-                    html += td.outerHTML;
+                if (isToday) {
+                    headerBg = 'bg-amber-500 text-white border-amber-600';
+                    todayIndicator = `<span class="block text-2xs uppercase tracking-wider text-amber-100 font-bold">Today</span>`;
+                }
+
+                html += `
+                    <th id="date-col-${dIndex}" class="p-3 text-center border-r ${headerBg} whitespace-nowrap">
+                        <div class="font-bold text-xs whitespace-nowrap">${dateStr}</div>
+                        ${todayIndicator}
+                    </th>`;
+            });
+
+            html += `</tr></thead><tbody class="divide-y divide-slate-200">`;
+
+            appData.people.forEach((person, pIndex) => {
+                html += `
+                    <tr class="hover:bg-slate-50/80 transition">
+                        <th class="sticky left-0 z-10 bg-slate-50 p-3 font-extrabold text-slate-800 text-center border-r border-slate-200 shadow-xs min-w-[140px]">
+                            <div class="text-sm">${person}</div>
+                        </th>`;
+
+                filteredIndices.forEach((dIndex) => {
+                    const dateStr = appData.dates[dIndex];
+                    const isToday = isTodayDate(dateStr);
+                    const tempTd = createCellTd(pIndex, dIndex, isToday);
+                    html += tempTd.outerHTML;
                 });
 
                 html += `</tr>`;
@@ -911,81 +959,106 @@
             const container = document.getElementById('summaryCardsContainer');
             const stats = calculateStreaksAndStats();
 
-            const combinedBaseSaved = stats.reduce((acc, curr) => acc + curr.totalSaved, 0);
-            const combinedInterest = combinedBaseSaved * (appData.interestRate / 100);
-            const combinedTotalWithInterest = combinedBaseSaved + combinedInterest;
+            let jointSavings = 0;
+            stats.forEach(s => jointSavings += s.totalSaved);
+
+            const interestRate = appData.interestRate || 3;
+            const projectedInterest = jointSavings * (interestRate / 100);
+            const totalFutureValue = jointSavings + projectedInterest;
+
+            const personThemes = [
+                { dot: 'bg-sky-500', badgeBg: 'bg-sky-50', badgeBorder: 'border-sky-200', badgeText: 'text-sky-700' },
+                { dot: 'bg-rose-500', badgeBg: 'bg-rose-50', badgeBorder: 'border-rose-200', badgeText: 'text-rose-700' },
+                { dot: 'bg-purple-500', badgeBg: 'bg-purple-50', badgeBorder: 'border-purple-200', badgeText: 'text-purple-700' },
+                { dot: 'bg-amber-500', badgeBg: 'bg-amber-50', badgeBorder: 'border-amber-200', badgeText: 'text-amber-700' }
+            ];
 
             let html = '';
 
-            stats.forEach((stat, pIndex) => {
-                const dotColor = pIndex === 0 ? 'bg-sky-500' : 'bg-rose-500';
-                const streakBg = pIndex === 0 ? 'text-sky-700 bg-sky-50 border-sky-200' : 'text-rose-700 bg-rose-50 border-rose-200';
+            // Individual Progress Cards (e.g., Matt's Progress, Tif's Progress)
+            stats.forEach((s, pIndex) => {
+                const theme = personThemes[pIndex % personThemes.length];
                 html += `
-                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-3">
-                        <div class="flex items-center justify-between">
-                            <h3 class="font-bold text-slate-800 flex items-center gap-2">
-                                <span class="w-3 h-3 rounded-full ${dotColor}"></span>
-                                ${stat.person}'s Progress
-                            </h3>
-                            <span class="text-xs font-bold ${streakBg} px-2.5 py-1 rounded-full border">
-                                🔥 ${stat.currentStreak} Day Streak
-                            </span>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
-                            <div>
-                                <span class="text-xs text-slate-500 block">Total Checkmarks</span>
-                                <span class="text-lg font-extrabold text-slate-800">${stat.totalChecked} ${stat.totalChecked === 1 ? 'day' : 'days'}</span>
+                    <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-4">
+                        <!-- Card Header -->
+                        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                            <div class="flex items-center gap-2 font-bold text-slate-900 text-base">
+                                <span class="w-3 h-3 rounded-full ${theme.dot} shrink-0"></span>
+                                <span>${escapeHtml(s.person)}'s Progress</span>
                             </div>
-                            <div>
-                                <span class="text-xs text-slate-500 block">Money Saved</span>
-                                <span class="text-lg font-extrabold text-emerald-600">₱${stat.totalSaved.toLocaleString()}</span>
+                            <div class="px-3 py-1 rounded-full border ${theme.badgeBg} ${theme.badgeBorder} ${theme.badgeText} text-xs font-semibold flex items-center gap-1 shadow-2xs">
+                                <span>🔥</span> ${s.currentStreak} Day Streak
                             </div>
                         </div>
-                    </div>
-                `;
+
+                        <!-- Card Stats Grid -->
+                        <div class="grid grid-cols-2 gap-4 pt-1">
+                            <div>
+                                <div class="text-xs text-slate-400 font-medium">Total Checkmarks</div>
+                                <div class="text-lg font-bold text-slate-900 mt-1">${s.totalChecked} ${s.totalChecked === 1 ? 'day' : 'days'}</div>
+                            </div>
+                            <div>
+                                <div class="text-xs text-slate-400 font-medium">Money Saved</div>
+                                <div class="text-lg font-extrabold text-emerald-600 mt-1">₱${s.totalSaved.toLocaleString()}</div>
+                            </div>
+                        </div>
+                    </div>`;
             });
 
+            // Joint Future Savings Card
             html += `
-                <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white p-5 rounded-xl shadow-md space-y-3">
+                <div class="bg-[#0f172a] text-slate-100 rounded-2xl p-5 shadow-lg border border-slate-800 flex flex-col justify-between space-y-4">
+                    <!-- Header -->
                     <div class="flex items-center justify-between">
-                        <h3 class="font-bold flex items-center gap-2">
+                        <div class="flex items-center gap-2 font-bold text-white text-base">
                             <i data-lucide="piggy-bank" class="w-5 h-5 text-amber-400"></i>
-                            Joint Future Savings
-                        </h3>
-                        <button onclick="changeInterest()" class="text-xs font-bold text-amber-300 bg-amber-400/20 hover:bg-amber-400/30 px-2.5 py-1 rounded-full border border-amber-400/30 transition flex items-center gap-1 cursor-pointer" title="Click to edit interest rate">
-                            +${appData.interestRate}% Interest <i data-lucide="pencil" class="w-3 h-3 opacity-80"></i>
+                            <span>Joint Future Savings</span>
+                        </div>
+                        <button onclick="changeInterest()" class="px-3 py-1 rounded-full border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer" title="Edit interest rate">
+                            +${interestRate}% Interest
+                            <i data-lucide="pencil" class="w-3 h-3 text-amber-400"></i>
                         </button>
                     </div>
-                    <div class="space-y-1.5 pt-1">
-                        <div class="flex justify-between text-xs text-slate-300">
-                            <span>Base Savings:</span>
-                            <span class="font-semibold text-white">₱${combinedBaseSaved.toLocaleString()}</span>
+
+                    <!-- Breakdown Rows -->
+                    <div class="space-y-2 pt-1">
+                        <div class="flex items-center justify-between text-xs md:text-sm">
+                            <span class="text-slate-300 font-medium">Base Savings:</span>
+                            <span class="font-bold text-white">₱${jointSavings.toLocaleString()}</span>
                         </div>
-                        <div class="flex justify-between text-xs text-emerald-300">
-                            <span>Projected Interest (+${appData.interestRate}%):</span>
-                            <span class="font-semibold">₱${combinedInterest.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                        </div>
-                        <div class="flex justify-between text-base font-extrabold text-amber-300 pt-2 border-t border-slate-700/80">
-                            <span>Total Future Value:</span>
-                            <span>₱${combinedTotalWithInterest.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                        <div class="flex items-center justify-between text-xs md:text-sm">
+                            <span class="text-emerald-400 font-medium">Projected Interest (+${interestRate}%):</span>
+                            <span class="font-bold text-emerald-400">₱${projectedInterest.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                     </div>
-                </div>
-            `;
+
+                    <!-- Divider & Total -->
+                    <div class="border-t border-slate-700/80 pt-3">
+                        <div class="flex items-center justify-between">
+                            <span class="font-extrabold text-amber-400 text-sm md:text-base">Total Future Value:</span>
+                            <span class="font-black text-amber-400 text-lg md:text-xl">₱${totalFutureValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                    </div>
+                </div>`;
 
             container.innerHTML = html;
-            document.getElementById('displayDailyRate').textContent = `₱${appData.dailyRate}`;
-            document.getElementById('displayInterestRate').textContent = `${appData.interestRate}%`;
         }
 
         function renderAll(preserveScroll = false) {
-            let savedScrollLeft = 0;
-            let savedWindowY = window.scrollY;
+            let windowScrollX = 0;
+            let windowScrollY = 0;
+            let tableScrollLeft = 0;
+            let tableScrollTop = 0;
+
+            const container = document.getElementById('tableContainer');
+            const scrollableInner = container ? container.querySelector('.overflow-x-auto') : null;
 
             if (preserveScroll) {
-                const scrollWrapper = document.querySelector('#tableContainer .overflow-x-auto');
-                if (scrollWrapper) {
-                    savedScrollLeft = scrollWrapper.scrollLeft;
+                windowScrollX = window.scrollX || window.pageXOffset || 0;
+                windowScrollY = window.scrollY || window.pageYOffset || 0;
+                if (scrollableInner) {
+                    tableScrollLeft = scrollableInner.scrollLeft;
+                    tableScrollTop = scrollableInner.scrollTop;
                 }
             }
 
@@ -997,55 +1070,62 @@
 
             renderSummaryCards();
 
-            if (preserveScroll) {
-                requestAnimationFrame(() => {
-                    const newScrollWrapper = document.querySelector('#tableContainer .overflow-x-auto');
-                    if (newScrollWrapper) {
-                        newScrollWrapper.scrollLeft = savedScrollLeft;
-                    }
-                    window.scrollTo(0, savedWindowY);
-                });
+            if (preserveScroll && container) {
+                const newScrollableInner = container.querySelector('.overflow-x-auto');
+                if (newScrollableInner) {
+                    newScrollableInner.scrollLeft = tableScrollLeft;
+                    newScrollableInner.scrollTop = tableScrollTop;
+                }
+                window.scrollTo(windowScrollX, windowScrollY);
             }
 
             if (window.lucide) {
                 lucide.createIcons();
             }
         }
-        window.renderAll = renderAll;
 
         function openModal(pIndex, dIndex) {
             currentModalTarget = { pIndex, dIndex };
             const cellId = getCellId(pIndex, dIndex);
             const cellData = appData.cells[cellId] || { notes: '' };
 
-            document.getElementById('modalSubtext').textContent = `${appData.people[pIndex]} • ${appData.dates[dIndex]}`;
-            document.getElementById('modalNoteText').value = cellData.notes || '';
-            
-            const btnDelete = document.getElementById('btnDeleteNote');
-            if (cellData.notes) {
-                btnDelete.classList.remove('hidden');
-            } else {
-                btnDelete.classList.add('hidden');
-            }
+            const personName = appData.people[pIndex];
+            const dateStr = appData.dates[dIndex];
 
-            document.getElementById('noteModal').classList.remove('hidden');
+            const modalSubtext = document.getElementById('modalSubtext');
+            const modalNoteText = document.getElementById('modalNoteText');
+            const noteModal = document.getElementById('noteModal');
+
+            if (modalSubtext) modalSubtext.textContent = `${personName} - ${dateStr}`;
+            if (modalNoteText) modalNoteText.value = cellData.notes || '';
+
+            if (noteModal) noteModal.classList.remove('hidden');
         }
         window.openModal = openModal;
+
+        function closeModal() {
+            const noteModal = document.getElementById('noteModal');
+            if (noteModal) noteModal.classList.add('hidden');
+            currentModalTarget = null;
+        }
+        window.closeModal = closeModal;
 
         function saveModalNote() {
             if (!currentModalTarget) return;
             const { pIndex, dIndex } = currentModalTarget;
             const cellId = getCellId(pIndex, dIndex);
+            const noteText = document.getElementById('modalNoteText').value.trim();
 
             if (!appData.cells[cellId]) {
                 appData.cells[cellId] = { status: '', notes: '', timestamp: '' };
             }
+            appData.cells[cellId].notes = noteText;
 
-            appData.cells[cellId].notes = document.getElementById('modalNoteText').value.trim();
             saveLocalData();
-            closeModal();
+            saveToCloud();
             renderAll(true);
-            showToast("Note saved successfully!", "success");
+            closeModal();
+            showToast("Note saved!");
         }
         window.saveModalNote = saveModalNote;
 
@@ -1059,239 +1139,199 @@
             }
 
             saveLocalData();
-            closeModal();
+            saveToCloud();
             renderAll(true);
-            showToast("Note deleted.", "info");
+            closeModal();
+            showToast("Note deleted");
         }
         window.deleteModalNote = deleteModalNote;
 
-        function closeModal() {
-            document.getElementById('noteModal').classList.add('hidden');
-            currentModalTarget = null;
-        }
-        window.closeModal = closeModal;
-
-        function openAddDayModal() {
-            document.getElementById('addDayModal').classList.remove('hidden');
-        }
-        window.openAddDayModal = openAddDayModal;
-
-        function closeAddDayModal() {
-            document.getElementById('addDayModal').classList.add('hidden');
-        }
-        window.closeAddDayModal = closeAddDayModal;
-
-        function saveNewDay() {
-            const val = document.getElementById('newDateInput').value;
-            if (!val) return;
-            const d = new Date(val);
-            const dateStr = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-
-            if (!appData.dates.includes(dateStr)) {
-                appData.dates.push(dateStr);
-                saveLocalData();
-                populateMonthSelectOptions();
-                renderAll(true);
-                showToast(`Added ${dateStr}`, "success");
-            }
-            closeAddDayModal();
-        }
-        window.saveNewDay = saveNewDay;
-
-        function openAddMonthModal() {
-            document.getElementById('addMonthModal').classList.remove('hidden');
-        }
-        window.openAddMonthModal = openAddMonthModal;
-
-        function closeAddMonthModal() {
-            document.getElementById('addMonthModal').classList.add('hidden');
-        }
-        window.closeAddMonthModal = closeAddMonthModal;
-
-        function saveNewMonth() {
-            const val = document.getElementById('newMonthInput').value;
-            if (!val) return;
-
-            const [year, month] = val.split('-').map(Number);
-            const daysInMonth = new Date(year, month, 0).getDate();
-
-            let addedCount = 0;
-            for (let day = 1; day <= daysInMonth; day++) {
-                const d = new Date(year, month - 1, day);
-                const dateStr = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-                if (!appData.dates.includes(dateStr)) {
-                    appData.dates.push(dateStr);
-                    addedCount++;
-                }
-            }
-
-            if (addedCount > 0) {
-                saveLocalData();
-                populateMonthSelectOptions();
-                currentMonthFilter = `${year}-${String(month).padStart(2, '0')}`;
-                document.getElementById('monthSelect').value = currentMonthFilter;
-                renderAll(true);
-                showToast(`Generated ${addedCount} days for ${val}`, "success");
-            }
-
-            closeAddMonthModal();
-        }
-        window.saveNewMonth = saveNewMonth;
-
-        function jumpToToday() {
-            currentMonthFilter = 'all';
-            document.getElementById('monthSelect').value = 'all';
-            setFilter('all');
-
-            renderAll(false);
-
-            setTimeout(() => {
-                const todayEl = document.getElementById('today-col') || document.getElementById('today-row');
-                if (todayEl) {
-                    todayEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-                }
-            }, 100);
-        }
-        window.jumpToToday = jumpToToday;
-
-        function handleMonthFilterChange(val) {
-            currentMonthFilter = val;
-            renderAll(true);
-        }
-        window.handleMonthFilterChange = handleMonthFilterChange;
-
-        function setFilter(filter) {
-            activeFilter = filter;
-            const btnAll = document.getElementById('btnFilterAll');
-            const btnMonth = document.getElementById('btnFilterMonth');
-            const btnWeek = document.getElementById('btnFilterWeek');
-            const btnMissed = document.getElementById('btnFilterMissed');
-
-            const activeClass = 'px-3 py-1 text-xs font-semibold rounded-md bg-white text-slate-800 shadow-xs';
-            const inactiveClass = 'px-3 py-1 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-900';
-
-            if (btnAll) btnAll.className = filter === 'all' ? activeClass : inactiveClass;
-            if (btnMonth) btnMonth.className = filter === 'month' ? activeClass : inactiveClass;
-            if (btnWeek) btnWeek.className = filter === 'week' ? activeClass : inactiveClass;
-            if (btnMissed) btnMissed.className = filter === 'missed' ? activeClass : inactiveClass;
-
-            renderAll(true);
-        }
-        window.setFilter = setFilter;
-
-        function toggleOrientation() {
-            orientation = orientation === 'horizontal' ? 'vertical' : 'horizontal';
-            const btn = document.getElementById('btnOrientation');
-            if (btn) {
-                btn.innerHTML = orientation === 'horizontal'
-                    ? `<i data-lucide="columns" class="w-4 h-4"></i>`
-                    : `<i data-lucide="rows" class="w-4 h-4"></i>`;
-                btn.setAttribute('title', orientation === 'horizontal' ? 'Switch to Dates in Rows' : 'Switch to Dates in Columns');
-            }
-            renderAll(false);
-        }
-        window.toggleOrientation = toggleOrientation;
-
-        function toggleTheme() {
-            document.body.classList.toggle('dark-theme');
-            const isDark = document.body.classList.contains('dark-theme');
-            localStorage.setItem('contributionTrackerTheme', isDark ? 'dark' : 'light');
-            document.getElementById('themeIcon').setAttribute('data-lucide', isDark ? 'sun' : 'moon');
-            if (window.lucide) lucide.createIcons();
-        }
-        window.toggleTheme = toggleTheme;
-
-        function changeRate() {
-            openSettingsModal('rate');
-        }
-        window.changeRate = changeRate;
-
-        function changeInterest() {
-            openSettingsModal('interest');
-        }
-        window.changeInterest = changeInterest;
-
-        function openSettingsModal(type) {
-            const modal = document.getElementById('editSettingsModal');
-            const title = document.getElementById('settingsModalTitle');
-            const label = document.getElementById('settingsModalLabel');
-            const input = document.getElementById('settingsModalInput');
-            
-            if (type === 'rate') {
-                title.innerHTML = `<i data-lucide="coins" class="w-5 h-5 text-emerald-600"></i> Edit Daily Contribution`;
-                label.textContent = 'Daily Amount per Person (₱):';
-                input.value = appData.dailyRate;
-                input.dataset.type = 'rate';
-            } else {
-                title.innerHTML = `<i data-lucide="trending-up" class="w-5 h-5 text-indigo-600"></i> Edit Interest Rate`;
-                label.textContent = 'Projected Annual Interest Rate (%):';
-                input.value = appData.interestRate;
-                input.dataset.type = 'interest';
-            }
-            
-            modal.classList.remove('hidden');
-            if (window.lucide) lucide.createIcons();
-            setTimeout(() => input.focus(), 100);
-        }
-
-        function saveSettingsModal() {
-            const input = document.getElementById('settingsModalInput');
-            const type = input.dataset.type;
-            const val = Number(input.value);
-
-            if (!isNaN(val) && val >= 0) {
-                if (type === 'rate') {
-                    appData.dailyRate = val;
-                } else {
-                    appData.interestRate = val;
-                }
-                saveLocalData();
-                renderAll(true);
-                showToast("Settings updated!", "success");
-            }
-            closeSettingsModal();
-        }
-        window.saveSettingsModal = saveSettingsModal;
-
-        function closeSettingsModal() {
-            document.getElementById('editSettingsModal').classList.add('hidden');
-        }
-        window.closeSettingsModal = closeSettingsModal;
-
         function openSyncModal() {
-            const input = document.getElementById('roomCodeInput');
-            if (input) input.value = currentRoomCode;
-            document.getElementById('syncModal').classList.remove('hidden');
-            if (window.lucide) lucide.createIcons();
+            const syncModal = document.getElementById('syncModal');
+            const roomInput = document.getElementById('syncRoomInput');
+            if (roomInput) roomInput.value = currentRoomId;
+            if (syncModal) syncModal.classList.remove('hidden');
         }
         window.openSyncModal = openSyncModal;
 
         function closeSyncModal() {
-            document.getElementById('syncModal').classList.add('hidden');
+            const syncModal = document.getElementById('syncModal');
+            if (syncModal) syncModal.classList.add('hidden');
         }
         window.closeSyncModal = closeSyncModal;
 
-        function saveRoomCode() {
-            const input = document.getElementById('roomCodeInput');
-            if (input && input.value.trim()) {
-                currentRoomCode = input.value.trim();
-                localStorage.setItem('savings_room_code', currentRoomCode);
-                initFirebase();
-                showToast(`Switched room to: ${currentRoomCode}`, "success");
+        function copySyncCode() {
+            const roomInput = document.getElementById('syncRoomInput');
+            if (roomInput && roomInput.value) {
+                const text = roomInput.value.trim();
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text);
+                } else {
+                    document.execCommand('copy');
+                }
+                showToast("Room code copied!");
             }
-            closeSyncModal();
         }
-        window.saveRoomCode = saveRoomCode;
+        window.copySyncCode = copySyncCode;
+
+        function saveSyncRoom() {
+            const roomInput = document.getElementById('syncRoomInput');
+            if (!roomInput) return;
+            const newRoom = roomInput.value.trim();
+            if (!newRoom) {
+                showToast("Please enter a room code", 'error');
+                return;
+            }
+
+            currentRoomId = newRoom;
+            localStorage.setItem('savings_tracker_room_id', currentRoomId);
+
+            const displaySyncRoom = document.getElementById('displaySyncRoom');
+            if (displaySyncRoom) displaySyncRoom.textContent = currentRoomId;
+
+            closeSyncModal();
+            initCloudSync();
+            showToast(`Connected to Room: ${currentRoomId}`);
+        }
+        window.saveSyncRoom = saveSyncRoom;
+
+        function toggleFirebaseConfigSection() {
+            const section = document.getElementById('firebaseConfigSection');
+            const chevron = document.getElementById('fbConfigChevron');
+            if (!section) return;
+
+            if (section.classList.contains('hidden')) {
+                section.classList.remove('hidden');
+                if (chevron) chevron.classList.add('rotate-180');
+            } else {
+                section.classList.add('hidden');
+                if (chevron) chevron.classList.remove('rotate-180');
+            }
+        }
+        window.toggleFirebaseConfigSection = toggleFirebaseConfigSection;
+
+        function saveCustomFirebaseConfig() {
+            const input = document.getElementById('firebaseConfigInput');
+            if (!input || !input.value.trim()) {
+                showToast("Please paste valid JSON config", 'error');
+                return;
+            }
+
+            try {
+                const parsed = JSON.parse(input.value.trim());
+                if (!parsed.apiKey) {
+                    showToast("Config missing apiKey", 'error');
+                    return;
+                }
+                localStorage.setItem('savings_tracker_firebase_config', JSON.stringify(parsed));
+                showToast("Firebase credentials saved!");
+                initCloudSync();
+            } catch (e) {
+                showToast("Invalid JSON formatting", 'error');
+            }
+        }
+        window.saveCustomFirebaseConfig = saveCustomFirebaseConfig;
+
+        function clearFirebaseConfig() {
+            localStorage.removeItem('savings_tracker_firebase_config');
+            const input = document.getElementById('firebaseConfigInput');
+            if (input) input.value = '';
+            showToast("Saved credentials reset");
+            initCloudSync();
+        }
+        window.clearFirebaseConfig = clearFirebaseConfig;
+
+        let activeSettingsType = null;
+        function changeRate() {
+            activeSettingsType = 'rate';
+            const modal = document.getElementById('editSettingsModal');
+            const title = document.getElementById('settingsModalTitle');
+            const label = document.getElementById('settingsModalLabel');
+            const input = document.getElementById('settingsModalInput');
+
+            if (title) title.innerHTML = `<i data-lucide="coins" class="w-5 h-5 text-emerald-600"></i> Change Daily Rate`;
+            if (label) label.textContent = "Daily Savings Target (₱):";
+            if (input) input.value = appData.dailyRate || 20;
+
+            if (window.lucide) lucide.createIcons();
+            if (modal) modal.classList.remove('hidden');
+        }
+        window.changeRate = changeRate;
+
+        function changeInterest() {
+            activeSettingsType = 'interest';
+            const modal = document.getElementById('editSettingsModal');
+            const title = document.getElementById('settingsModalTitle');
+            const label = document.getElementById('settingsModalLabel');
+            const input = document.getElementById('settingsModalInput');
+
+            if (title) title.innerHTML = `<i data-lucide="trending-up" class="w-5 h-5 text-indigo-600"></i> Edit Annual Interest Rate`;
+            if (label) label.textContent = "Annual Interest Rate (%):";
+            if (input) input.value = appData.interestRate || 3;
+
+            if (window.lucide) lucide.createIcons();
+            if (modal) modal.classList.remove('hidden');
+        }
+        window.changeInterest = changeInterest;
+
+        function closeSettingsModal() {
+            const modal = document.getElementById('editSettingsModal');
+            if (modal) modal.classList.add('hidden');
+            activeSettingsType = null;
+        }
+        window.closeSettingsModal = closeSettingsModal;
+
+        function saveSettingsModal() {
+            const input = document.getElementById('settingsModalInput');
+            if (!input) return;
+            const val = parseFloat(input.value);
+
+            if (isNaN(val) || val < 0) {
+                showToast("Please enter a valid positive number", 'error');
+                return;
+            }
+
+            if (activeSettingsType === 'rate') {
+                appData.dailyRate = val;
+                const display = document.getElementById('displayDailyRate');
+                if (display) display.textContent = `₱${val}`;
+                showToast(`Daily rate set to ₱${val}`);
+            } else if (activeSettingsType === 'interest') {
+                appData.interestRate = val;
+                const display = document.getElementById('displayInterestRate');
+                if (display) display.textContent = `${val}%`;
+                showToast(`Interest rate set to ${val}%`);
+            }
+
+            saveLocalData();
+            saveToCloud();
+            renderAll();
+            closeSettingsModal();
+        }
+        window.saveSettingsModal = saveSettingsModal;
+
+        function toggleTheme() {
+            document.body.classList.toggle('dark-theme');
+            const isDark = document.body.classList.contains('dark-theme');
+            localStorage.setItem('savings_tracker_theme', isDark ? 'dark' : 'light');
+
+            const themeIcon = document.getElementById('themeIcon');
+            if (themeIcon) {
+                themeIcon.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
+                if (window.lucide) lucide.createIcons();
+            }
+        }
+        window.toggleTheme = toggleTheme;
 
         function exportJSONBackup() {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", `for_us_savings_backup_${new Date().toISOString().slice(0,10)}.json`);
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
-            showToast("Backup downloaded!", "success");
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", `for_us_savings_backup_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
+            showToast("Backup downloaded!");
         }
         window.exportJSONBackup = exportJSONBackup;
 
@@ -1302,48 +1342,177 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    const parsed = JSON.parse(e.target.result);
-                    if (parsed && parsed.dates && parsed.people) {
-                        appData = parsed;
+                    const imported = JSON.parse(e.target.result);
+                    if (imported && imported.people && imported.dates) {
+                        appData = imported;
+                        window.appData = appData;
                         saveLocalData();
+                        saveToCloud();
                         populateMonthSelectOptions();
-                        renderAll(true);
-                        showToast("Data restored from backup!", "success");
+                        renderAll();
+                        showToast("Data restored successfully!");
                     } else {
-                        showToast("Invalid backup file format.", "error");
+                        showToast("Invalid backup file structure", 'error');
                     }
                 } catch (err) {
-                    showToast("Could not read backup file.", "error");
+                    showToast("Error parsing backup file", 'error');
                 }
             };
             reader.readAsText(file);
         }
         window.importJSONBackup = importJSONBackup;
 
-        window.onload = function() {
-            if (localStorage.getItem('contributionTrackerTheme') === 'dark') {
-                document.body.classList.add('dark-theme');
-                document.getElementById('themeIcon').setAttribute('data-lucide', 'sun');
-            }
-
-            const saved = localStorage.getItem('contributionTrackerData');
-            if (saved) {
-                try {
-                    appData = JSON.parse(saved);
-                    if (appData.dailyRate === undefined) appData.dailyRate = 20;
-                    if (appData.interestRate === undefined) appData.interestRate = 3;
-                } catch (e) {
-                    appData = JSON.parse(JSON.stringify(defaultData));
+        function setFilter(filterType) {
+            activeFilter = filterType;
+            ['All', 'Month', 'Week', 'Missed'].forEach(type => {
+                const btn = document.getElementById(`btnFilter${type}`);
+                if (!btn) return;
+                if (type.toLowerCase() === filterType) {
+                    btn.className = "px-3 py-1 text-xs font-semibold rounded-md bg-white text-slate-800 shadow-xs";
+                } else {
+                    btn.className = "px-3 py-1 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-900";
                 }
-            } else {
-                appData = JSON.parse(JSON.stringify(defaultData));
-            }
-            window.appData = appData;
+            });
+            renderAll();
+        }
+        window.setFilter = setFilter;
 
+        function handleMonthFilterChange(val) {
+            currentMonthFilter = val;
+            renderAll();
+        }
+        window.handleMonthFilterChange = handleMonthFilterChange;
+
+        function jumpToToday() {
+            const todayIndex = appData.dates.findIndex(d => isTodayDate(d));
+            if (todayIndex !== -1) {
+                renderAll();
+                setTimeout(() => {
+                    let elem = null;
+                    if (orientation === 'horizontal') {
+                        elem = document.getElementById(`date-row-${todayIndex}`);
+                    } else {
+                        elem = document.getElementById(`date-col-${todayIndex}`);
+                    }
+                    if (elem) {
+                        elem.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+                    }
+                }, 100);
+            } else {
+                showToast("Today's date is not in list. Add it using + Add Day", 'error');
+            }
+        }
+        window.jumpToToday = jumpToToday;
+
+        function openAddDayModal() {
+            const modal = document.getElementById('addDayModal');
+            const input = document.getElementById('newDateInput');
+            if (input) input.value = new Date().toISOString().slice(0, 10);
+            if (modal) modal.classList.remove('hidden');
+        }
+        window.openAddDayModal = openAddDayModal;
+
+        function closeAddDayModal() {
+            const modal = document.getElementById('addDayModal');
+            if (modal) modal.classList.add('hidden');
+        }
+        window.closeAddDayModal = closeAddDayModal;
+
+        function saveNewDay() {
+            const input = document.getElementById('newDateInput');
+            if (!input || !input.value) return;
+
+            const selected = new Date(input.value);
+            const dateStr = selected.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+            if (appData.dates.includes(dateStr)) {
+                showToast("Date already exists in list", 'error');
+                return;
+            }
+
+            appData.dates.push(dateStr);
+            appData.dates.sort((a, b) => new Date(a) - new Date(b));
+
+            saveLocalData();
+            saveToCloud();
             populateMonthSelectOptions();
-            renderAll(false);
-            initFirebase();
-        };
+            renderAll();
+            closeAddDayModal();
+            showToast(`Added ${dateStr}`);
+        }
+        window.saveNewDay = saveNewDay;
+
+        function openAddMonthModal() {
+            const modal = document.getElementById('addMonthModal');
+            const input = document.getElementById('newMonthInput');
+            if (input) {
+                const now = new Date();
+                input.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            }
+            if (modal) modal.classList.remove('hidden');
+        }
+        window.openAddMonthModal = openAddMonthModal;
+
+        function closeAddMonthModal() {
+            const modal = document.getElementById('addMonthModal');
+            if (modal) modal.classList.add('hidden');
+        }
+        window.closeAddMonthModal = closeAddMonthModal;
+
+        function saveNewMonth() {
+            const input = document.getElementById('newMonthInput');
+            if (!input || !input.value) return;
+
+            const [year, month] = input.value.split('-').map(Number);
+            const daysInMonth = new Date(year, month, 0).getDate();
+
+            let addedCount = 0;
+            for (let day = 1; day <= daysInMonth; day++) {
+                const d = new Date(year, month - 1, day);
+                const dateStr = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+                if (!appData.dates.includes(dateStr)) {
+                    appData.dates.push(dateStr);
+                    addedCount++;
+                }
+            }
+
+            appData.dates.sort((a, b) => new Date(a) - new Date(b));
+
+            saveLocalData();
+            saveToCloud();
+            populateMonthSelectOptions();
+            renderAll();
+            closeAddMonthModal();
+            showToast(`Generated ${addedCount} new dates`);
+        }
+        window.saveNewMonth = saveNewMonth;
+
+        function toggleOrientation() {
+            orientation = orientation === 'horizontal' ? 'vertical' : 'horizontal';
+            localStorage.setItem('savings_tracker_orientation', orientation);
+            renderAll();
+        }
+        window.toggleOrientation = toggleOrientation;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('savings_tracker_theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-theme');
+                const themeIcon = document.getElementById('themeIcon');
+                if (themeIcon) themeIcon.setAttribute('data-lucide', 'sun');
+            }
+
+            loadLocalData();
+
+            const rateDisplay = document.getElementById('displayDailyRate');
+            if (rateDisplay) rateDisplay.textContent = `₱${appData.dailyRate || 20}`;
+
+            const intDisplay = document.getElementById('displayInterestRate');
+            if (intDisplay) intDisplay.textContent = `${appData.interestRate || 3}%`;
+
+            initCloudSync();
+        });
     </script>
 </body>
 </html>

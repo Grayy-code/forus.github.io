@@ -1386,6 +1386,23 @@
         function jumpToToday() {
             const todayIndex = appData.dates.findIndex(d => isTodayDate(d));
             if (todayIndex !== -1) {
+                // Reset active month and quick filters so Today's date is guaranteed to be rendered
+                currentMonthFilter = 'all';
+                activeFilter = 'all';
+
+                const monthSelect = document.getElementById('monthSelect');
+                if (monthSelect) monthSelect.value = 'all';
+
+                ['All', 'Month', 'Week', 'Missed'].forEach(type => {
+                    const btn = document.getElementById(`btnFilter${type}`);
+                    if (!btn) return;
+                    if (type === 'All') {
+                        btn.className = "px-3 py-1 text-xs font-semibold rounded-md bg-white text-slate-800 shadow-xs";
+                    } else {
+                        btn.className = "px-3 py-1 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-900";
+                    }
+                });
+
                 renderAll();
                 setTimeout(() => {
                     let elem = null;

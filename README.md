@@ -166,7 +166,7 @@
         </div>
     </main>
 
-    <!-- Modals -->
+    <!-- Sync Modal -->
     <div id="syncModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center hidden p-4">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
             <div class="flex items-center justify-between">
@@ -184,7 +184,7 @@
                 <div>
                     <span class="font-bold block" id="syncStatusTitle">Local Storage Mode</span>
                     <span id="syncStatusDesc" class="text-2xs text-amber-700 leading-snug block">
-                        Changes are saved on this phone only. To sync live across multiple phones on GitHub Pages, add your free Firebase config below!
+                        Changes are saved on this device only. Set up live sync below!
                     </span>
                 </div>
             </div>
@@ -199,7 +199,6 @@
                 </div>
             </div>
 
-            <!-- Firebase Configuration Accordion / Toggle -->
             <div class="pt-2 border-t border-slate-100">
                 <button onclick="toggleFirebaseConfigSection()" class="w-full flex items-center justify-between text-xs font-bold text-slate-700 hover:text-rose-600 transition py-1">
                     <span class="flex items-center gap-1.5">
@@ -211,7 +210,7 @@
 
                 <div id="firebaseConfigSection" class="mt-3 space-y-3 hidden bg-slate-50 p-3.5 rounded-xl border border-slate-200">
                     <p class="text-2xs text-slate-600 leading-relaxed">
-                        Paste your <strong>Firebase Web Config</strong> (JSON object or JavaScript object format from Firebase Console) to enable real-time synchronization across devices:
+                        Paste your <strong>Firebase Web Config</strong> (JSON object) to enable real-time synchronization across devices:
                     </p>
                     <textarea id="firebaseConfigInput" rows="5" class="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-2xs focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder='{
   "apiKey": "AIzaSy...",
@@ -237,6 +236,7 @@
         </div>
     </div>
 
+    <!-- Edit Settings Modal -->
     <div id="editSettingsModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center hidden p-4">
         <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-slate-100 space-y-4">
             <div class="flex items-center justify-between">
@@ -258,6 +258,7 @@
         </div>
     </div>
 
+    <!-- Notes Modal -->
     <div id="noteModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center hidden p-4">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-100 space-y-4">
             <div class="flex items-center justify-between">
@@ -273,7 +274,7 @@
                 <textarea id="modalNoteText" rows="4" class="w-full border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Add optional details or notes..."></textarea>
             </div>
             <div class="flex items-center justify-between pt-2">
-                <button id="btnDeleteNote" onclick="deleteModalNote()" class="px-3 py-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg text-xs font-semibold flex items-center gap-1 transition">
+                <button id="btnDeleteNote" onclick="deleteModalNote()" class="px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-lg text-xs font-semibold flex items-center gap-1 transition">
                     <i data-lucide="trash-2" class="w-4 h-4"></i> Delete Note
                 </button>
                 <div class="flex items-center gap-2">
@@ -284,6 +285,7 @@
         </div>
     </div>
 
+    <!-- Add Single Day Modal -->
     <div id="addDayModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center hidden p-4">
         <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-slate-100 space-y-4">
             <div class="flex items-center justify-between">
@@ -305,6 +307,7 @@
         </div>
     </div>
 
+    <!-- Add Month Modal -->
     <div id="addMonthModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center hidden p-4">
         <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-slate-100 space-y-4">
             <div class="flex items-center justify-between">
@@ -338,309 +341,7 @@
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'for-us-savings-tracker';
-        
-        let db = null;
-        let auth = null;
-        let unsubscribeSync = null;
-        let isSyncingFromCloud = false;
 
-        let currentRoomId = localStorage.getItem('savings_tracker_room_id') || 'our-savings-tracker';
-
-        // =========================================================================
-        // ⚡ HARDCODED FIREBASE CONFIGURATION
-        // Paste your Firebase Web App credentials between the quotes below.
-        // Once saved, every phone/device opening this URL will sync automatically!
-        // =========================================================================
-        const HARDCODED_FIREBASE_CONFIG = {
-            apiKey: "AIzaSyBeL_RP3j8HoKCQLRrQtSMrW3aHOhplL-4",
-            authDomain: "our-savings-app.firebaseapp.com",
-            projectId: "our-savings-app",
-            storageBucket: "our-savings-app.firebasestorage.app",
-            messagingSenderId: "425975640293",
-            appId: "1:425975640293:web:93c90879946cad8600a40c"
-        };
-
-        function getFirebaseConfig() {
-            // 1. Check if user saved custom credentials via the settings modal
-            const savedConfig = localStorage.getItem('savings_tracker_firebase_config');
-            if (savedConfig) {
-                try {
-                    return JSON.parse(savedConfig);
-                } catch(e) {
-                    console.error("Error parsing saved Firebase config:", e);
-                }
-            }
-
-            // 2. Check if the hardcoded configuration above has been filled out
-            if (HARDCODED_FIREBASE_CONFIG && HARDCODED_FIREBASE_CONFIG.apiKey && HARDCODED_FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY_HERE") {
-                return HARDCODED_FIREBASE_CONFIG;
-            }
-
-            // 3. Fallback to environment-injected config if available
-            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-                try {
-                    return typeof __firebase_config === 'string' ? JSON.parse(__firebase_config) : __firebase_config;
-                } catch(e) {}
-            }
-            return null;
-        }
-
-        async function saveToCloud() {
-            if (!db || isSyncingFromCloud) return;
-            try {
-                const trackerRef = doc(db, 'artifacts', appId, 'public', 'data', 'trackers', currentRoomId);
-                await setDoc(trackerRef, {
-                    data: window.appData,
-                    updatedAt: new Date().toISOString(),
-                    updatedBy: auth?.currentUser?.uid || 'anonymous'
-                }, { merge: true });
-            } catch (err) {
-                console.error("Failed to sync to cloud:", err);
-                if (err.code === 'permission-denied') {
-                    updateSyncUIStatus('error', 'Firestore Permission Denied: Ensure your Firestore Rules allow reads and writes (start in Test Mode).');
-                } else {
-                    updateSyncUIStatus('error', `Cloud sync failed: ${err.message || 'Network error'}`);
-                }
-            }
-        }
-        window.saveToCloud = saveToCloud;
-
-        function updateSyncUIStatus(state, errorMessage = '') {
-            const pulse = document.getElementById('syncPulse');
-            const banner = document.getElementById('syncStatusBanner');
-            const title = document.getElementById('syncStatusTitle');
-            const desc = document.getElementById('syncStatusDesc');
-
-            if (state === 'online') {
-                if (pulse) pulse.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
-                if (banner) banner.className = 'p-3 rounded-xl border text-xs flex items-start gap-2.5 bg-emerald-50 border-emerald-200 text-emerald-900';
-                if (title) title.textContent = 'Live Cloud Sync Active 💕';
-                if (desc) desc.textContent = `Connected to room "${currentRoomId}". Updates on either phone will sync automatically in real-time.`;
-            } else if (state === 'error') {
-                if (pulse) pulse.className = 'w-2 h-2 rounded-full bg-rose-500';
-                if (banner) banner.className = 'p-3 rounded-xl border text-xs flex items-start gap-2.5 bg-rose-50 border-rose-200 text-rose-900';
-                if (title) title.textContent = 'Sync Connection Issue';
-                if (desc) desc.textContent = errorMessage || `Could not connect to Firebase. Local changes are saved safely on this device.`;
-            } else {
-                if (pulse) pulse.className = 'w-2 h-2 rounded-full bg-amber-500 animate-pulse';
-                if (banner) banner.className = 'p-3 rounded-xl border text-xs flex items-start gap-2.5 bg-amber-50 border-amber-200 text-amber-900';
-                if (title) title.textContent = 'Local Storage Mode (Standalone)';
-                if (desc) desc.textContent = `Changes save locally on this device. To enable cross-device live sync, tap "Firebase Cloud Credentials Setup" below and paste your free Firebase config.`;
-            }
-        }
-
-        function setupRealtimeSync(roomId) {
-            if (!db) return;
-
-            if (unsubscribeSync) {
-                unsubscribeSync();
-            }
-
-            const trackerRef = doc(db, 'artifacts', appId, 'public', 'data', 'trackers', roomId);
-            
-            unsubscribeSync = onSnapshot(trackerRef, (snapshot) => {
-                if (snapshot.exists()) {
-                    const cloudContent = snapshot.data();
-                    if (cloudContent && cloudContent.data) {
-                        isSyncingFromCloud = true;
-                        window.appData = cloudContent.data;
-                        localStorage.setItem('contributionTrackerData', JSON.stringify(window.appData));
-                        if (window.populateMonthSelectOptions) window.populateMonthSelectOptions();
-                        if (window.renderAll) window.renderAll(true);
-                        isSyncingFromCloud = false;
-                    }
-                } else {
-                    saveToCloud();
-                }
-                updateSyncUIStatus('online');
-            }, (error) => {
-                console.error("Firestore sync error:", error);
-                let msg = "Firestore connection failed.";
-                if (error.code === 'permission-denied') {
-                    msg = "Permission denied: Go to Firebase Console -> Firestore Database -> Rules and set rules to start in Test Mode.";
-                } else if (error.code === 'unavailable') {
-                    msg = "Network offline or Firebase service unavailable.";
-                }
-                updateSyncUIStatus('error', msg);
-            });
-        }
-
-        async function initCloudSync() {
-            const roomDisplay = document.getElementById('displaySyncRoom');
-            if (roomDisplay) roomDisplay.textContent = currentRoomId;
-
-            const firebaseConfig = getFirebaseConfig();
-
-            // Check if config exists and isn't a placeholder API key
-            if (!firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey.includes("YOUR_API_KEY") || firebaseConfig.apiKey.includes("AIzaSyBeL_RP3j8HoKCQLRrQtSMrW3aHOhplL-4")) {
-                updateSyncUIStatus('offline');
-                return;
-            }
-
-            try {
-                // Detach existing active listener if reconnecting
-                if (unsubscribeSync) {
-                    unsubscribeSync();
-                    unsubscribeSync = null;
-                }
-
-                // Delete existing Firebase app instance to prevent duplicate app initialization errors
-                if (getApps().length > 0) {
-                    await deleteApp(getApp());
-                }
-
-                const app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
-
-                let authenticated = false;
-
-                // Try custom token auth if provided
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    try {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                        authenticated = true;
-                    } catch (tokenErr) {
-                        console.warn("Custom token sign-in skipped/failed:", tokenErr.message);
-                    }
-                }
-
-                // Fall back to anonymous authentication if needed
-                if (!authenticated) {
-                    try {
-                        await signInAnonymously(auth);
-                        authenticated = true;
-                    } catch (anonErr) {
-                        console.warn("Anonymous sign-in failed:", anonErr.message);
-                        let errMsg = "Anonymous Authentication is not enabled in your Firebase Console. Go to Authentication -> Sign-in method -> Enable Anonymous.";
-                        if (anonErr.code === 'auth/invalid-api-key' || (anonErr.message && anonErr.message.includes('API key'))) {
-                            errMsg = "Invalid Firebase API key provided. Please check your credentials in the Room setup modal.";
-                        } else if (anonErr.code === 'auth/unauthorized-domain') {
-                            errMsg = "Domain not authorized: Go to Firebase Console -> Authentication -> Settings -> Authorized Domains and add 'mjc-create.github.io'.";
-                        }
-                        updateSyncUIStatus('error', errMsg);
-                        return;
-                    }
-                }
-
-                setupRealtimeSync(currentRoomId);
-            } catch (err) {
-                console.error("Initialization error:", err);
-                updateSyncUIStatus('error', err.message || "Failed to connect to Firebase.");
-            }
-        }
-
-        window.openSyncModal = function() {
-            const input = document.getElementById('syncRoomInput');
-            if (input) input.value = currentRoomId;
-
-            const savedConfig = localStorage.getItem('savings_tracker_firebase_config');
-            const textarea = document.getElementById('firebaseConfigInput');
-            if (textarea && savedConfig) {
-                textarea.value = savedConfig;
-            }
-
-            document.getElementById('syncModal').classList.remove('hidden');
-        };
-
-        window.closeSyncModal = function() {
-            document.getElementById('syncModal').classList.add('hidden');
-        };
-
-        window.toggleFirebaseConfigSection = function() {
-            const section = document.getElementById('firebaseConfigSection');
-            const chevron = document.getElementById('fbConfigChevron');
-            if (section) {
-                section.classList.toggle('hidden');
-                if (chevron) chevron.classList.toggle('rotate-180');
-            }
-        };
-
-        window.saveCustomFirebaseConfig = function() {
-            const textarea = document.getElementById('firebaseConfigInput');
-            let rawText = textarea ? textarea.value.trim() : '';
-
-            if (!rawText) {
-                window.showToast("Please enter a valid Firebase configuration JSON", "error");
-                return;
-            }
-
-            // Clean JS object string if copied straight from console
-            if (rawText.startsWith('const firebaseConfig =') || rawText.startsWith('var firebaseConfig =')) {
-                rawText = rawText.replace(/^.*=\s*/, '').replace(/;$/, '');
-            }
-
-            try {
-                // Validate JSON formatting
-                let parsed = null;
-                try {
-                    parsed = JSON.parse(rawText);
-                } catch(e) {
-                    // Fix unquoted keys if copied from standard JS object
-                    const jsonified = rawText.replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":').replace(/'/g, '"');
-                    parsed = JSON.parse(jsonified);
-                }
-
-                if (parsed && parsed.apiKey && parsed.projectId) {
-                    localStorage.setItem('savings_tracker_firebase_config', JSON.stringify(parsed));
-                    window.closeSyncModal();
-                    initCloudSync();
-                    window.showToast("Firebase credentials saved & connected!");
-                } else {
-                    window.showToast("Invalid Firebase config structure. Must contain apiKey & projectId.", "error");
-                }
-            } catch(err) {
-                window.showToast("Failed to parse Firebase config. Check format.", "error");
-            }
-        };
-
-        window.clearFirebaseConfig = async function() {
-            localStorage.removeItem('savings_tracker_firebase_config');
-            const textarea = document.getElementById('firebaseConfigInput');
-            if (textarea) textarea.value = '';
-            
-            if (unsubscribeSync) {
-                unsubscribeSync();
-                unsubscribeSync = null;
-            }
-            if (getApps().length > 0) {
-                await deleteApp(getApp());
-            }
-            db = null;
-            auth = null;
-            
-            updateSyncUIStatus(false);
-            window.showToast("Firebase credentials removed.");
-        };
-
-        window.saveSyncRoom = function() {
-            const input = document.getElementById('syncRoomInput');
-            const newRoom = input.value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '-');
-            if (!newRoom) return;
-
-            currentRoomId = newRoom;
-            localStorage.setItem('savings_tracker_room_id', currentRoomId);
-            
-            const roomDisplay = document.getElementById('displaySyncRoom');
-            if (roomDisplay) roomDisplay.textContent = currentRoomId;
-
-            setupRealtimeSync(currentRoomId);
-            window.closeSyncModal();
-            window.showToast(`Switched to room: ${currentRoomId}`);
-        };
-
-        window.copySyncCode = function() {
-            const input = document.getElementById('syncRoomInput');
-            if (input && input.value) {
-                navigator.clipboard?.writeText ? navigator.clipboard.writeText(input.value) : document.execCommand('copy');
-                window.showToast("Room code copied!");
-            }
-        };
-
-        document.addEventListener('DOMContentLoaded', initCloudSync);
-    </script>
-
-    <script>
         const defaultData = {
             dailyRate: 20,
             interestRate: 3,
@@ -661,6 +362,22 @@
             }
         };
 
+        const HARDCODED_FIREBASE_CONFIG = {
+            apiKey: "AIzaSyBeL_RP3j8HoKCQLRrQtSMrW3aHOhplL-4",
+            authDomain: "our-savings-app.firebaseapp.com",
+            databaseURL: "https://our-savings-app-default-rtdb.firebaseio.com",
+            projectId: "our-savings-app",
+            storageBucket: "our-savings-app.firebasestorage.app",
+            messagingSenderId: "425975640293",
+            appId: "1:425975640293:web:93c90879946cad8600a40c",
+            measurementId: "G-5MHPDSCL33"
+        };
+
+        let db = null;
+        let auth = null;
+        let unsubscribeSync = null;
+        let isSyncingFromCloud = false;
+
         let appData = JSON.parse(JSON.stringify(defaultData));
         window.appData = appData;
 
@@ -668,26 +385,177 @@
         let currentMonthFilter = 'all'; 
         let orientation = 'horizontal'; 
         let currentModalTarget = null; 
+        let currentRoomId = localStorage.getItem('savings_tracker_room_id') || 'our-savings-tracker';
 
-        function showToast(message, type = 'success') {
+        function showToast(msg, iconType = 'check') {
             const toast = document.getElementById('toastNotification');
             const toastText = document.getElementById('toastText');
             const toastIcon = document.getElementById('toastIcon');
             if (!toast || !toastText) return;
 
-            toastText.textContent = message;
-            if (type === 'error') {
-                toast.className = 'fixed bottom-5 right-5 z-50 bg-rose-600 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 transition-all duration-300 opacity-100 transform translate-y-0';
-                if (toastIcon) toastIcon.setAttribute('data-lucide', 'alert-circle');
-            } else {
-                toast.className = 'fixed bottom-5 right-5 z-50 bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 transition-all duration-300 opacity-100 transform translate-y-0';
-                if (toastIcon) toastIcon.setAttribute('data-lucide', 'check-circle-2');
+            toastText.textContent = msg;
+            if (toastIcon) {
+                toastIcon.setAttribute('data-lucide', iconType === 'error' ? 'alert-circle' : 'check-circle-2');
+                if (window.lucide) lucide.createIcons();
             }
-            if (window.lucide) lucide.createIcons();
+
+            toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-2');
+            toast.classList.add('opacity-100', 'translate-y-0');
 
             setTimeout(() => {
-                toast.className = 'fixed bottom-5 right-5 z-50 bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 transition-all duration-300 opacity-0 pointer-events-none transform translate-y-2';
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-2');
             }, 3000);
+        }
+        window.showToast = showToast;
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return String(text)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function getFirebaseConfig() {
+            const savedConfig = localStorage.getItem('savings_tracker_firebase_config');
+            if (savedConfig) {
+                try {
+                    return JSON.parse(savedConfig);
+                } catch(e) {}
+            }
+            if (HARDCODED_FIREBASE_CONFIG && HARDCODED_FIREBASE_CONFIG.apiKey) {
+                return HARDCODED_FIREBASE_CONFIG;
+            }
+            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                try {
+                    return typeof __firebase_config === 'string' ? JSON.parse(__firebase_config) : __firebase_config;
+                } catch(e) {}
+            }
+            return null;
+        }
+
+        function updateSyncUIStatus(status, message = '') {
+            const pulse = document.getElementById('syncPulse');
+            const title = document.getElementById('syncStatusTitle');
+            const desc = document.getElementById('syncStatusDesc');
+
+            if (!pulse || !title || !desc) return;
+
+            if (status === 'live') {
+                pulse.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
+                title.textContent = "Live Cloud Sync Active";
+                desc.textContent = `Real-time updates enabled in Room: ${currentRoomId}`;
+            } else if (status === 'connecting') {
+                pulse.className = "w-2 h-2 rounded-full bg-amber-500 animate-pulse";
+                title.textContent = "Connecting to Cloud...";
+                desc.textContent = "Establishing live database connection.";
+            } else if (status === 'error') {
+                pulse.className = "w-2 h-2 rounded-full bg-rose-500";
+                title.textContent = "Sync Connection Issue";
+                desc.textContent = message || "Could not connect to Firebase cloud. Running in local storage mode.";
+            } else {
+                pulse.className = "w-2 h-2 rounded-full bg-slate-400";
+                title.textContent = "Local Storage Mode";
+                desc.textContent = "Data is saved locally on this device.";
+            }
+        }
+
+        async function saveToCloud() {
+            if (!db || isSyncingFromCloud) return;
+            try {
+                const trackerRef = doc(db, 'artifacts', appId, 'public', 'data', 'trackers', currentRoomId);
+                await setDoc(trackerRef, {
+                    data: window.appData,
+                    updatedAt: new Date().toISOString(),
+                    updatedBy: auth?.currentUser?.uid || 'anonymous'
+                }, { merge: true });
+            } catch (err) {
+                console.error("Failed to sync to cloud:", err);
+            }
+        }
+        window.saveToCloud = saveToCloud;
+
+        function setupRealtimeSync(roomId) {
+            if (!db) return;
+            const trackerRef = doc(db, 'artifacts', appId, 'public', 'data', 'trackers', roomId);
+
+            updateSyncUIStatus('connecting');
+
+            unsubscribeSync = onSnapshot(trackerRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const cloudDoc = docSnap.data();
+                    if (cloudDoc && cloudDoc.data) {
+                        isSyncingFromCloud = true;
+                        window.appData = Object.assign({}, defaultData, cloudDoc.data);
+                        appData = window.appData;
+
+                        saveLocalData();
+                        populateMonthSelectOptions();
+                        renderAll(true);
+
+                        isSyncingFromCloud = false;
+                        updateSyncUIStatus('live');
+                    }
+                } else {
+                    updateSyncUIStatus('live');
+                    saveToCloud();
+                }
+            }, (error) => {
+                console.warn("Realtime sync error:", error);
+                updateSyncUIStatus('error', error.message || 'Permission denied or network offline.');
+            });
+        }
+
+        async function initCloudSync() {
+            const roomDisplay = document.getElementById('displaySyncRoom');
+            if (roomDisplay) roomDisplay.textContent = currentRoomId;
+
+            const firebaseConfig = getFirebaseConfig();
+
+            if (!firebaseConfig || !firebaseConfig.apiKey) {
+                updateSyncUIStatus('offline');
+                return;
+            }
+
+            try {
+                if (unsubscribeSync) {
+                    unsubscribeSync();
+                    unsubscribeSync = null;
+                }
+
+                if (getApps().length > 0) {
+                    await deleteApp(getApp());
+                }
+
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                let authenticated = false;
+
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    try {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                        authenticated = true;
+                    } catch (tErr) {}
+                }
+
+                if (!authenticated) {
+                    try {
+                        await signInAnonymously(auth);
+                    } catch (aErr) {
+                        console.warn("Anonymous sign-in skipped/failed:", aErr.message);
+                    }
+                }
+
+                setupRealtimeSync(currentRoomId);
+            } catch (err) {
+                console.error("Initialization error:", err);
+                updateSyncUIStatus('error', err.message || "Failed to connect to Firebase.");
+            }
         }
 
         function loadLocalData() {
@@ -697,9 +565,6 @@
                     appData = JSON.parse(saved);
                     if (appData.dailyRate === undefined) appData.dailyRate = 20;
                     if (appData.interestRate === undefined) appData.interestRate = 3;
-                    if (!appData.dates || !Array.isArray(appData.dates)) appData.dates = defaultData.dates;
-                    if (!appData.people || !Array.isArray(appData.people)) appData.people = defaultData.people;
-                    if (!appData.cells) appData.cells = {};
                 } catch (e) {
                     appData = JSON.parse(JSON.stringify(defaultData));
                 }
@@ -708,7 +573,7 @@
             }
             window.appData = appData;
             populateMonthSelectOptions();
-            renderAll(false);
+            renderAll();
         }
 
         function saveLocalData() {
@@ -756,9 +621,10 @@
             }
 
             saveLocalData();
-            if (window.saveToCloud) window.saveToCloud();
+            saveToCloud();
             renderAll(true);
         }
+        window.toggleCellCheckbox = toggleCellCheckbox;
 
         function getFilteredDateIndices() {
             let indices = appData.dates.map((_, i) => i);
@@ -877,16 +743,6 @@
             });
         }
 
-        function escapeHtml(str) {
-            if (!str) return '';
-            return String(str)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
-        }
-
         function createCellTd(pIndex, dIndex, isToday = false) {
             const cellId = getCellId(pIndex, dIndex);
             const cellData = appData.cells[cellId] || { status: '', notes: '', timestamp: '' };
@@ -905,7 +761,7 @@
             if (isChecked) {
                 bgClass = isToday ? 'bg-emerald-100/90' : 'bg-emerald-50/80';
             } else if (isMissed) {
-                bgClass = 'bg-rose-50/60 dark:bg-rose-950/20';
+                bgClass = 'bg-rose-50/60';
             } else if (isToday) {
                 bgClass = 'bg-amber-50/60';
             }
@@ -922,8 +778,8 @@
                    </button>`;
 
             const timeBadge = (isChecked && cellData.timestamp)
-                ? `<span class="text-2xs font-semibold text-emerald-800 bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-200 px-2 py-0.5 rounded-full shadow-xs mt-1 border border-emerald-200/60 dark:border-emerald-800">${escapeHtml(cellData.timestamp)}</span>`
-                : (isMissed ? `<span class="text-2xs font-semibold text-rose-700 bg-rose-100/80 dark:bg-rose-950 dark:text-rose-300 px-2 py-0.5 rounded-full shadow-xs mt-1 border border-rose-200 dark:border-rose-900">Missed</span>` : '');
+                ? `<span class="text-2xs font-semibold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full shadow-xs mt-1 border border-emerald-200/60">${cellData.timestamp}</span>`
+                : (isMissed ? `<span class="text-2xs font-semibold text-rose-700 bg-rose-100/80 px-2 py-0.5 rounded-full shadow-xs mt-1 border border-rose-200">Missed</span>` : '');
 
             const checkboxBorder = isMissed ? 'border-rose-300 bg-rose-50' : 'border-slate-300';
 
@@ -965,6 +821,7 @@
 
             select.value = currentMonthFilter;
         }
+        window.populateMonthSelectOptions = populateMonthSelectOptions;
 
         function renderHorizontalTable() {
             const container = document.getElementById('tableContainer');
@@ -975,55 +832,54 @@
                     <div class="p-8 text-center text-slate-500 space-y-2">
                         <i data-lucide="check-circle-2" class="w-10 h-10 text-emerald-500 mx-auto opacity-80"></i>
                         <p class="font-bold text-sm text-slate-700">No missed contributions!</p>
-                        <p class="text-xs text-slate-500">Everything is up to date for past dates. 💕</p>
-                    </div>
-                `;
+                        <p class="text-xs text-slate-500">You're completely up to date with your savings goal!</p>
+                    </div>`;
                 return;
             }
 
             let html = `
                 <div class="overflow-x-auto custom-scrollbar">
-                    <table class="w-full border-collapse text-left text-sm">
+                    <table class="w-full text-left border-collapse text-xs">
                         <thead>
-                            <tr class="bg-emerald-700 text-white border-b border-emerald-800">
-                                <th class="p-3 font-bold text-white w-44 min-w-[176px] sticky left-0 bg-emerald-800 z-20 border-r-2 border-emerald-600">Person / Date</th>
-            `;
+                            <tr class="bg-emerald-800 text-white border-b border-emerald-900 font-bold uppercase tracking-wider">
+                                <th class="sticky left-0 z-20 bg-emerald-800 p-3 text-center min-w-[140px] border-r border-emerald-700 shadow-md">
+                                    Date
+                                </th>`;
 
-            filteredIndices.forEach(dIndex => {
-                const dateStr = appData.dates[dIndex];
-                const isToday = isTodayDate(dateStr);
-                const headerBg = isToday ? 'bg-emerald-600 text-amber-300 font-extrabold border-emerald-500' : 'bg-emerald-700 text-emerald-50';
-                const todayBadge = isToday ? `<span class="inline-block text-3xs uppercase tracking-wider text-amber-950 bg-amber-400 px-2 py-0.5 rounded-full font-black mt-1 shadow-xs animate-pulse">TODAY</span>` : '';
-
+            appData.people.forEach((person) => {
                 html += `
-                    <th id="${isToday ? 'today-col' : ''}" class="p-2.5 text-center font-medium min-w-[160px] border-r border-emerald-600/80 ${headerBg}">
-                        <div class="text-xs font-bold">${escapeHtml(dateStr)}</div>
-                        ${todayBadge}
-                    </th>
-                `;
+                    <th class="p-3 text-center min-w-[160px] border-r border-emerald-700">
+                        <div class="font-extrabold text-sm text-white">${person}</div>
+                        <div class="text-2xs font-normal text-emerald-100/90 mt-0.5">₱${appData.dailyRate} / day</div>
+                    </th>`;
             });
 
-            html += `</tr></thead><tbody>`;
+            html += `</tr></thead><tbody class="divide-y divide-slate-200">`;
 
-            appData.people.forEach((person, pIndex) => {
-                const avatarColor = pIndex === 0 ? 'bg-sky-100 text-sky-600 dark:bg-sky-950 dark:text-sky-300' : 'bg-rose-100 text-rose-600 dark:bg-rose-950 dark:text-rose-300';
-                html += `
-                    <tr class="border-b border-slate-200/70 hover:bg-slate-50/50">
-                        <td class="p-3 font-semibold text-slate-800 dark:text-slate-100 sticky left-0 bg-white dark:bg-slate-800 z-10 border-r-2 border-slate-200 dark:border-slate-700">
-                            <div class="flex items-center gap-2">
-                                <div class="w-8 h-8 rounded-full ${avatarColor} flex items-center justify-center font-bold text-xs shrink-0">
-                                    ${escapeHtml(person.charAt(0))}
-                                </div>
-                                <span class="truncate">${escapeHtml(person)}</span>
-                            </div>
-                        </td>
-                `;
+            filteredIndices.forEach((dIndex) => {
+                const dateStr = appData.dates[dIndex];
+                const isToday = isTodayDate(dateStr);
+                const isPast = isPastDate(dateStr);
 
-                filteredIndices.forEach(dIndex => {
-                    const dateStr = appData.dates[dIndex];
-                    const isToday = isTodayDate(dateStr);
-                    const td = createCellTd(pIndex, dIndex, isToday);
-                    html += td.outerHTML;
+                let dateBg = 'bg-slate-50';
+                let dateBadge = '';
+
+                if (isToday) {
+                    dateBg = 'bg-amber-100 text-amber-900 border-r-2 border-amber-300';
+                    dateBadge = `<span class="block text-2xs font-bold text-amber-700 uppercase tracking-wider">Today</span>`;
+                } else if (isPast) {
+                    dateBg = 'bg-slate-100/80 text-slate-700';
+                }
+
+                html += `<tr id="date-row-${dIndex}" class="hover:bg-slate-50/80 transition">
+                    <th class="sticky left-0 z-10 ${dateBg} p-3 font-semibold text-center border-r border-slate-200 shadow-xs min-w-[140px]">
+                        <div class="text-xs text-slate-800 font-bold">${dateStr}</div>
+                        ${dateBadge}
+                    </th>`;
+
+                appData.people.forEach((_, pIndex) => {
+                    const tempTd = createCellTd(pIndex, dIndex, isToday);
+                    html += tempTd.outerHTML;
                 });
 
                 html += `</tr>`;
@@ -1042,47 +898,55 @@
                     <div class="p-8 text-center text-slate-500 space-y-2">
                         <i data-lucide="check-circle-2" class="w-10 h-10 text-emerald-500 mx-auto opacity-80"></i>
                         <p class="font-bold text-sm text-slate-700">No missed contributions!</p>
-                        <p class="text-xs text-slate-500">Everything is up to date for past dates. 💕</p>
-                    </div>
-                `;
+                        <p class="text-xs text-slate-500">You're completely up to date with your savings goal!</p>
+                    </div>`;
                 return;
             }
 
             let html = `
                 <div class="overflow-x-auto custom-scrollbar">
-                    <table class="w-full border-collapse text-left text-sm border border-slate-300 dark:border-slate-700">
+                    <table class="w-full text-left border-collapse text-xs">
                         <thead>
-                            <tr class="bg-emerald-700 text-white border-b-2 border-emerald-800">
-                                <th class="p-3 font-bold text-white bg-emerald-800 border-r-2 border-emerald-600 w-48 min-w-[180px]">Date</th>
-            `;
+                            <tr class="bg-emerald-800 text-white border-b border-emerald-900 font-bold uppercase tracking-wider">
+                                <th class="sticky left-0 z-20 bg-emerald-800 p-3 text-center min-w-[140px] border-r border-emerald-700 shadow-md">
+                                    Contributor
+                                </th>`;
 
-            appData.people.forEach((person, pIndex) => {
-                const avatarColor = pIndex === 0 ? 'bg-sky-100 text-sky-600' : 'bg-rose-100 text-rose-600';
-                html += `
-                    <th class="p-3 font-semibold text-white text-center border-r-2 border-emerald-600 bg-emerald-700 min-w-[160px]">
-                        <div class="flex items-center justify-center gap-1.5">
-                            <span class="w-5 h-5 rounded-full ${avatarColor} inline-flex items-center justify-center text-3xs font-bold">${escapeHtml(person.charAt(0))}</span>
-                            <span>${escapeHtml(person)}</span>
-                        </div>
-                    </th>
-                `;
-            });
-
-            html += `</tr></thead><tbody>`;
-
-            filteredIndices.forEach(dIndex => {
+            filteredIndices.forEach((dIndex) => {
                 const dateStr = appData.dates[dIndex];
                 const isToday = isTodayDate(dateStr);
-                const rowBg = isToday ? 'bg-amber-50/60 dark:bg-amber-950/20 font-medium' : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40';
-                const todayBadge = isToday ? `<span class="inline-block text-3xs uppercase tracking-wider text-amber-950 bg-amber-400 px-2 py-0.5 rounded-full font-black ml-2 shadow-xs animate-pulse">TODAY</span>` : '';
+                const isPast = isPastDate(dateStr);
 
-                html += `<tr id="${isToday ? 'today-row' : ''}" class="border-b-2 border-slate-200 dark:border-slate-700/80 ${rowBg}">`;
-                html += `<td class="p-3 text-slate-800 dark:text-slate-200 font-semibold border-r-2 border-slate-300 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/60">${escapeHtml(dateStr)} ${todayBadge}</td>`;
+                let headerBg = 'bg-emerald-800 text-white border-emerald-700';
+                let todayIndicator = '';
 
-                appData.people.forEach((_, pIndex) => {
-                    const td = createCellTd(pIndex, dIndex, isToday);
-                    td.className += " border-r-2 border-slate-200 dark:border-slate-700/80";
-                    html += td.outerHTML;
+                if (isToday) {
+                    headerBg = 'bg-amber-500 text-white border-amber-600';
+                    todayIndicator = `<span class="block text-2xs uppercase tracking-wider text-amber-100 font-bold">Today</span>`;
+                }
+
+                html += `
+                    <th id="date-col-${dIndex}" class="p-3 text-center min-w-[160px] border-r ${headerBg}">
+                        <div class="font-bold text-xs">${dateStr}</div>
+                        ${todayIndicator}
+                    </th>`;
+            });
+
+            html += `</tr></thead><tbody class="divide-y divide-slate-200">`;
+
+            appData.people.forEach((person, pIndex) => {
+                html += `
+                    <tr class="hover:bg-slate-50/80 transition">
+                        <th class="sticky left-0 z-10 bg-slate-50 p-3 font-extrabold text-slate-800 text-center border-r border-slate-200 shadow-xs min-w-[140px]">
+                            <div class="text-sm">${person}</div>
+                            <div class="text-2xs font-normal text-slate-500 mt-0.5">₱${appData.dailyRate} / day</div>
+                        </th>`;
+
+                filteredIndices.forEach((dIndex) => {
+                    const dateStr = appData.dates[dIndex];
+                    const isToday = isTodayDate(dateStr);
+                    const tempTd = createCellTd(pIndex, dIndex, isToday);
+                    html += tempTd.outerHTML;
                 });
 
                 html += `</tr>`;
@@ -1096,84 +960,68 @@
             const container = document.getElementById('summaryCardsContainer');
             const stats = calculateStreaksAndStats();
 
-            const combinedBaseSaved = stats.reduce((acc, curr) => acc + curr.totalSaved, 0);
-            const combinedInterest = combinedBaseSaved * (appData.interestRate / 100);
-            const combinedTotalWithInterest = combinedBaseSaved + combinedInterest;
+            let jointSavings = 0;
+            stats.forEach(s => jointSavings += s.totalSaved);
 
-            let html = '';
+            const annualInterest = (appData.interestRate || 3) / 100;
+            const projectedInterest1Yr = jointSavings * annualInterest;
 
-            stats.forEach((stat, pIndex) => {
-                const dotColor = pIndex === 0 ? 'bg-sky-500' : 'bg-rose-500';
-                const streakBg = pIndex === 0 ? 'text-sky-700 bg-sky-50 border-sky-200' : 'text-rose-700 bg-rose-50 border-rose-200';
+            let html = `
+                <!-- Total Joint Pool -->
+                <div class="bg-linear-to-br from-emerald-600 to-teal-700 rounded-xl p-5 text-white shadow-md space-y-3 relative overflow-hidden">
+                    <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs font-bold uppercase tracking-wider text-emerald-100 flex items-center gap-1.5">
+                            <i data-lucide="piggy-bank" class="w-4 h-4"></i> Total Joint Savings
+                        </div>
+                        <span class="text-2xs font-extrabold bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-xs">Our Future Pool</span>
+                    </div>
+                    <div>
+                        <div class="text-3xl font-black tracking-tight">₱${jointSavings.toLocaleString()}</div>
+                        <div class="text-xs text-emerald-100/90 font-medium mt-1">
+                            Est. +₱${Math.round(projectedInterest1Yr).toLocaleString()} / yr interest (@${appData.interestRate || 3}%)
+                        </div>
+                    </div>
+                </div>`;
+
+            stats.forEach((s) => {
                 html += `
-                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-3">
+                    <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-xs space-y-3">
                         <div class="flex items-center justify-between">
-                            <h3 class="font-bold text-slate-800 flex items-center gap-2">
-                                <span class="w-3 h-3 rounded-full ${dotColor}"></span>
-                                ${escapeHtml(stat.person)}'s Progress
-                            </h3>
-                            <span class="text-xs font-bold ${streakBg} px-2.5 py-1 rounded-full border">
-                                🔥 ${stat.currentStreak} Day Streak
+                            <h4 class="font-extrabold text-slate-800 text-sm flex items-center gap-1.5">
+                                <i data-lucide="user" class="w-4 h-4 text-emerald-600"></i> ${s.person}
+                            </h4>
+                            <span class="text-2xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                                ${s.totalChecked} Days Completed
                             </span>
                         </div>
-                        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
-                            <div>
-                                <span class="text-xs text-slate-500 block">Total Checkmarks</span>
-                                <span class="text-lg font-extrabold text-slate-800">${stat.totalChecked} days</span>
+                        <div>
+                            <div class="text-2xl font-black text-slate-900">₱${s.totalSaved.toLocaleString()}</div>
+                            <div class="text-2xs font-medium text-slate-500 mt-0.5">Total Individual Contribution</div>
+                        </div>
+                        <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                            <div class="flex items-center gap-1 text-amber-600 font-bold">
+                                <i data-lucide="flame" class="w-3.5 h-3.5 fill-amber-500"></i>
+                                <span>Streak: ${s.currentStreak} days</span>
                             </div>
-                            <div>
-                                <span class="text-xs text-slate-500 block">Money Saved</span>
-                                <span class="text-lg font-extrabold text-emerald-600">₱${stat.totalSaved.toLocaleString()}</span>
+                            <div class="text-slate-400 font-medium text-2xs">
+                                Best: ${s.bestStreak} days
                             </div>
                         </div>
-                    </div>
-                `;
+                    </div>`;
             });
 
-            html += `
-                <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white p-5 rounded-xl shadow-md space-y-3">
-                    <div class="flex items-center justify-between">
-                        <h3 class="font-bold flex items-center gap-2">
-                            <i data-lucide="piggy-bank" class="w-5 h-5 text-amber-400"></i>
-                            Joint Future Savings
-                        </h3>
-                        <button onclick="changeInterest()" class="text-xs font-bold text-amber-300 bg-amber-400/20 hover:bg-amber-400/30 px-2.5 py-1 rounded-full border border-amber-400/30 transition flex items-center gap-1 cursor-pointer" title="Click to edit interest rate">
-                            +${appData.interestRate}% Interest <i data-lucide="pencil" class="w-3 h-3 opacity-80"></i>
-                        </button>
-                    </div>
-                    <div class="space-y-1.5 pt-1">
-                        <div class="flex justify-between text-xs text-slate-300">
-                            <span>Base Savings:</span>
-                            <span class="font-semibold text-white">₱${combinedBaseSaved.toLocaleString()}</span>
-                        </div>
-                        <div class="flex justify-between text-xs text-emerald-300">
-                            <span>Projected Interest (+${appData.interestRate}%):</span>
-                            <span class="font-semibold">₱${combinedInterest.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                        </div>
-                        <div class="flex justify-between text-base font-extrabold text-amber-300 pt-2 border-t border-slate-700/80">
-                            <span>Total Future Value:</span>
-                            <span>₱${combinedTotalWithInterest.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                        </div>
-                    </div>
-                </div>
-            `;
-
             container.innerHTML = html;
-            document.getElementById('displayDailyRate').textContent = `₱${appData.dailyRate}`;
-            document.getElementById('displayInterestRate').textContent = `${appData.interestRate}%`;
         }
 
-        function renderAll(preserveScroll = true) {
-            let containerScrollLeft = 0;
-            let containerScrollTop = 0;
-            const windowScrollY = window.scrollY;
+        function renderAll(preserveScroll = false) {
+            let scrollTop = 0;
+            let scrollLeft = 0;
+            const container = document.getElementById('tableContainer');
 
-            if (preserveScroll) {
-                const prevContainer = document.querySelector('#tableContainer .overflow-x-auto');
-                if (prevContainer) {
-                    containerScrollLeft = prevContainer.scrollLeft;
-                    containerScrollTop = prevContainer.scrollTop;
-                }
+            if (preserveScroll && container) {
+                scrollTop = container.scrollTop;
+                scrollLeft = container.scrollLeft;
             }
 
             if (orientation === 'horizontal') {
@@ -1181,21 +1029,16 @@
             } else {
                 renderVerticalTable();
             }
+
             renderSummaryCards();
-            
-            if (window.lucide) {
-                lucide.createIcons();
+
+            if (preserveScroll && container) {
+                container.scrollTop = scrollTop;
+                container.scrollLeft = scrollLeft;
             }
 
-            if (preserveScroll) {
-                requestAnimationFrame(() => {
-                    const newContainer = document.querySelector('#tableContainer .overflow-x-auto');
-                    if (newContainer) {
-                        newContainer.scrollLeft = containerScrollLeft;
-                        newContainer.scrollTop = containerScrollTop;
-                    }
-                    window.scrollTo(0, windowScrollY);
-                });
+            if (window.lucide) {
+                lucide.createIcons();
             }
         }
 
@@ -1204,35 +1047,45 @@
             const cellId = getCellId(pIndex, dIndex);
             const cellData = appData.cells[cellId] || { notes: '' };
 
-            document.getElementById('modalSubtext').textContent = `${appData.people[pIndex]} • ${appData.dates[dIndex]}`;
-            document.getElementById('modalNoteText').value = cellData.notes || '';
-            
-            const btnDelete = document.getElementById('btnDeleteNote');
-            if (cellData.notes) {
-                btnDelete.classList.remove('hidden');
-            } else {
-                btnDelete.classList.add('hidden');
-            }
+            const personName = appData.people[pIndex];
+            const dateStr = appData.dates[dIndex];
 
-            document.getElementById('noteModal').classList.remove('hidden');
+            const modalSubtext = document.getElementById('modalSubtext');
+            const modalNoteText = document.getElementById('modalNoteText');
+            const noteModal = document.getElementById('noteModal');
+
+            if (modalSubtext) modalSubtext.textContent = `${personName} - ${dateStr}`;
+            if (modalNoteText) modalNoteText.value = cellData.notes || '';
+
+            if (noteModal) noteModal.classList.remove('hidden');
         }
+        window.openModal = openModal;
+
+        function closeModal() {
+            const noteModal = document.getElementById('noteModal');
+            if (noteModal) noteModal.classList.add('hidden');
+            currentModalTarget = null;
+        }
+        window.closeModal = closeModal;
 
         function saveModalNote() {
             if (!currentModalTarget) return;
             const { pIndex, dIndex } = currentModalTarget;
             const cellId = getCellId(pIndex, dIndex);
+            const noteText = document.getElementById('modalNoteText').value.trim();
 
             if (!appData.cells[cellId]) {
                 appData.cells[cellId] = { status: '', notes: '', timestamp: '' };
             }
+            appData.cells[cellId].notes = noteText;
 
-            appData.cells[cellId].notes = document.getElementById('modalNoteText').value.trim();
             saveLocalData();
-            if (window.saveToCloud) window.saveToCloud();
-            closeModal();
+            saveToCloud();
             renderAll(true);
-            showToast("Note saved successfully!");
+            closeModal();
+            showToast("Note saved!");
         }
+        window.saveModalNote = saveModalNote;
 
         function deleteModalNote() {
             if (!currentModalTarget) return;
@@ -1244,194 +1097,201 @@
             }
 
             saveLocalData();
-            if (window.saveToCloud) window.saveToCloud();
-            closeModal();
+            saveToCloud();
             renderAll(true);
-            showToast("Note removed.");
+            closeModal();
+            showToast("Note deleted");
         }
+        window.deleteModalNote = deleteModalNote;
 
-        function closeModal() {
-            document.getElementById('noteModal').classList.add('hidden');
-            currentModalTarget = null;
+        function openSyncModal() {
+            const syncModal = document.getElementById('syncModal');
+            const roomInput = document.getElementById('syncRoomInput');
+            if (roomInput) roomInput.value = currentRoomId;
+            if (syncModal) syncModal.classList.remove('hidden');
         }
+        window.openSyncModal = openSyncModal;
 
-        function openAddDayModal() {
-            document.getElementById('addDayModal').classList.remove('hidden');
+        function closeSyncModal() {
+            const syncModal = document.getElementById('syncModal');
+            if (syncModal) syncModal.classList.add('hidden');
         }
+        window.closeSyncModal = closeSyncModal;
 
-        function closeAddDayModal() {
-            document.getElementById('addDayModal').classList.add('hidden');
-        }
-
-        function saveNewDay() {
-            const val = document.getElementById('newDateInput').value;
-            if (!val) return;
-            const d = new Date(val);
-            const dateStr = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-
-            if (!appData.dates.includes(dateStr)) {
-                appData.dates.push(dateStr);
-                saveLocalData();
-                if (window.saveToCloud) window.saveToCloud();
-                populateMonthSelectOptions();
-                renderAll(false);
-                showToast(`Added ${dateStr}`);
-            } else {
-                showToast(`${dateStr} is already added.`, 'error');
-            }
-            closeAddDayModal();
-        }
-
-        function openAddMonthModal() {
-            document.getElementById('addMonthModal').classList.remove('hidden');
-        }
-
-        function closeAddMonthModal() {
-            document.getElementById('addMonthModal').classList.add('hidden');
-        }
-
-        function saveNewMonth() {
-            const val = document.getElementById('newMonthInput').value;
-            if (!val) return;
-
-            const [year, month] = val.split('-').map(Number);
-            const daysInMonth = new Date(year, month, 0).getDate();
-
-            let addedCount = 0;
-            for (let day = 1; day <= daysInMonth; day++) {
-                const d = new Date(year, month - 1, day);
-                const dateStr = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-                if (!appData.dates.includes(dateStr)) {
-                    appData.dates.push(dateStr);
-                    addedCount++;
-                }
-            }
-
-            if (addedCount > 0) {
-                saveLocalData();
-                if (window.saveToCloud) window.saveToCloud();
-                populateMonthSelectOptions();
-                currentMonthFilter = `${year}-${String(month).padStart(2, '0')}`;
-                document.getElementById('monthSelect').value = currentMonthFilter;
-                renderAll(false);
-                showToast(`Generated month (${addedCount} days added)`);
-            } else {
-                showToast('All days in this month already exist.', 'error');
-            }
-
-            closeAddMonthModal();
-        }
-
-        function setFilter(filter) {
-            activeFilter = filter;
-            document.querySelectorAll('#btnFilterAll, #btnFilterMonth, #btnFilterWeek, #btnFilterMissed').forEach(btn => {
-                btn.className = 'px-3 py-1 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-900';
-            });
-            const activeBtnMap = {
-                all: 'btnFilterAll',
-                month: 'btnFilterMonth',
-                week: 'btnFilterWeek',
-                missed: 'btnFilterMissed'
-            };
-            const activeBtn = document.getElementById(activeBtnMap[filter]);
-            if (activeBtn) {
-                activeBtn.className = 'px-3 py-1 text-xs font-semibold rounded-md bg-white text-slate-800 shadow-xs';
-            }
-            renderAll(false);
-        }
-
-        function handleMonthFilterChange(val) {
-            currentMonthFilter = val;
-            renderAll(false);
-        }
-
-        function jumpToToday() {
-            currentMonthFilter = 'all';
-            activeFilter = 'all';
-            document.getElementById('monthSelect').value = 'all';
-            setFilter('all');
-
-            setTimeout(() => {
-                const target = document.getElementById(orientation === 'horizontal' ? 'today-col' : 'today-row');
-                if (target) {
-                    target.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'center' });
-                    showToast("Jumped to Today!");
+        function copySyncCode() {
+            const roomInput = document.getElementById('syncRoomInput');
+            if (roomInput && roomInput.value) {
+                const text = roomInput.value.trim();
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text);
                 } else {
-                    showToast("Today's date is not in the list.", 'error');
+                    document.execCommand('copy');
                 }
-            }, 100);
+                showToast("Room code copied!");
+            }
         }
+        window.copySyncCode = copySyncCode;
 
-        function toggleOrientation() {
-            orientation = orientation === 'horizontal' ? 'vertical' : 'horizontal';
-            renderAll(false);
-            showToast(`Switched to ${orientation} view.`);
+        function saveSyncRoom() {
+            const roomInput = document.getElementById('syncRoomInput');
+            if (!roomInput) return;
+            const newRoom = roomInput.value.trim();
+            if (!newRoom) {
+                showToast("Please enter a room code", 'error');
+                return;
+            }
+
+            currentRoomId = newRoom;
+            localStorage.setItem('savings_tracker_room_id', currentRoomId);
+
+            const displaySyncRoom = document.getElementById('displaySyncRoom');
+            if (displaySyncRoom) displaySyncRoom.textContent = currentRoomId;
+
+            closeSyncModal();
+            initCloudSync();
+            showToast(`Connected to Room: ${currentRoomId}`);
         }
+        window.saveSyncRoom = saveSyncRoom;
 
+        function toggleFirebaseConfigSection() {
+            const section = document.getElementById('firebaseConfigSection');
+            const chevron = document.getElementById('fbConfigChevron');
+            if (!section) return;
+
+            if (section.classList.contains('hidden')) {
+                section.classList.remove('hidden');
+                if (chevron) chevron.classList.add('rotate-180');
+            } else {
+                section.classList.add('hidden');
+                if (chevron) chevron.classList.remove('rotate-180');
+            }
+        }
+        window.toggleFirebaseConfigSection = toggleFirebaseConfigSection;
+
+        function saveCustomFirebaseConfig() {
+            const input = document.getElementById('firebaseConfigInput');
+            if (!input || !input.value.trim()) {
+                showToast("Please paste valid JSON config", 'error');
+                return;
+            }
+
+            try {
+                const parsed = JSON.parse(input.value.trim());
+                if (!parsed.apiKey) {
+                    showToast("Config missing apiKey", 'error');
+                    return;
+                }
+                localStorage.setItem('savings_tracker_firebase_config', JSON.stringify(parsed));
+                showToast("Firebase credentials saved!");
+                initCloudSync();
+            } catch (e) {
+                showToast("Invalid JSON formatting", 'error');
+            }
+        }
+        window.saveCustomFirebaseConfig = saveCustomFirebaseConfig;
+
+        function clearFirebaseConfig() {
+            localStorage.removeItem('savings_tracker_firebase_config');
+            const input = document.getElementById('firebaseConfigInput');
+            if (input) input.value = '';
+            showToast("Saved credentials reset");
+            initCloudSync();
+        }
+        window.clearFirebaseConfig = clearFirebaseConfig;
+
+        let activeSettingsType = null;
         function changeRate() {
-            document.getElementById('settingsModalTitle').innerHTML = `<i data-lucide="coins" class="w-5 h-5 text-emerald-600"></i> Change Daily Rate`;
-            document.getElementById('settingsModalLabel').textContent = "Daily Contribution Amount (₱):";
+            activeSettingsType = 'rate';
+            const modal = document.getElementById('editSettingsModal');
+            const title = document.getElementById('settingsModalTitle');
+            const label = document.getElementById('settingsModalLabel');
             const input = document.getElementById('settingsModalInput');
-            input.value = appData.dailyRate;
-            input.dataset.type = 'rate';
-            document.getElementById('editSettingsModal').classList.remove('hidden');
+
+            if (title) title.innerHTML = `<i data-lucide="coins" class="w-5 h-5 text-emerald-600"></i> Change Daily Rate`;
+            if (label) label.textContent = "Daily Savings Target (₱):";
+            if (input) input.value = appData.dailyRate || 20;
+
+            if (window.lucide) lucide.createIcons();
+            if (modal) modal.classList.remove('hidden');
         }
+        window.changeRate = changeRate;
 
         function changeInterest() {
-            document.getElementById('settingsModalTitle').innerHTML = `<i data-lucide="trending-up" class="w-5 h-5 text-indigo-600"></i> Change Interest Rate`;
-            document.getElementById('settingsModalLabel').textContent = "Annual Interest / Yield Rate (%):";
+            activeSettingsType = 'interest';
+            const modal = document.getElementById('editSettingsModal');
+            const title = document.getElementById('settingsModalTitle');
+            const label = document.getElementById('settingsModalLabel');
             const input = document.getElementById('settingsModalInput');
-            input.value = appData.interestRate;
-            input.dataset.type = 'interest';
-            document.getElementById('editSettingsModal').classList.remove('hidden');
+
+            if (title) title.innerHTML = `<i data-lucide="trending-up" class="w-5 h-5 text-indigo-600"></i> Edit Annual Interest Rate`;
+            if (label) label.textContent = "Annual Interest Rate (%):";
+            if (input) input.value = appData.interestRate || 3;
+
+            if (window.lucide) lucide.createIcons();
+            if (modal) modal.classList.remove('hidden');
         }
+        window.changeInterest = changeInterest;
 
         function closeSettingsModal() {
-            document.getElementById('editSettingsModal').classList.add('hidden');
+            const modal = document.getElementById('editSettingsModal');
+            if (modal) modal.classList.add('hidden');
+            activeSettingsType = null;
         }
+        window.closeSettingsModal = closeSettingsModal;
 
         function saveSettingsModal() {
             const input = document.getElementById('settingsModalInput');
-            const type = input.dataset.type;
-            const val = Number(input.value);
+            if (!input) return;
+            const val = parseFloat(input.value);
 
-            if (!isNaN(val) && val >= 0) {
-                if (type === 'rate') {
-                    appData.dailyRate = val;
-                } else {
-                    appData.interestRate = val;
-                }
-                saveLocalData();
-                if (window.saveToCloud) window.saveToCloud();
-                renderAll(true);
-                showToast("Settings updated successfully!");
+            if (isNaN(val) || val < 0) {
+                showToast("Please enter a valid positive number", 'error');
+                return;
             }
+
+            if (activeSettingsType === 'rate') {
+                appData.dailyRate = val;
+                const display = document.getElementById('displayDailyRate');
+                if (display) display.textContent = `₱${val}`;
+                showToast(`Daily rate set to ₱${val}`);
+            } else if (activeSettingsType === 'interest') {
+                appData.interestRate = val;
+                const display = document.getElementById('displayInterestRate');
+                if (display) display.textContent = `${val}%`;
+                showToast(`Interest rate set to ${val}%`);
+            }
+
+            saveLocalData();
+            saveToCloud();
+            renderAll();
             closeSettingsModal();
         }
+        window.saveSettingsModal = saveSettingsModal;
 
         function toggleTheme() {
-            const body = document.body;
-            body.classList.toggle('dark-theme');
-            const isDark = body.classList.contains('dark-theme');
-            localStorage.setItem('contributionTrackerTheme', isDark ? 'dark' : 'light');
-            
+            document.body.classList.toggle('dark-theme');
+            const isDark = document.body.classList.contains('dark-theme');
+            localStorage.setItem('savings_tracker_theme', isDark ? 'dark' : 'light');
+
             const themeIcon = document.getElementById('themeIcon');
             if (themeIcon) {
                 themeIcon.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
                 if (window.lucide) lucide.createIcons();
             }
         }
+        window.toggleTheme = toggleTheme;
 
         function exportJSONBackup() {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", `for_us_savings_backup_${new Date().toISOString().slice(0,10)}.json`);
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", `for_us_savings_backup_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
             showToast("Backup downloaded!");
         }
+        window.exportJSONBackup = exportJSONBackup;
 
         function importJSONBackup(event) {
             const file = event.target.files[0];
@@ -1440,32 +1300,176 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    const parsed = JSON.parse(e.target.result);
-                    if (parsed && parsed.dates && parsed.people) {
-                        appData = parsed;
+                    const imported = JSON.parse(e.target.result);
+                    if (imported && imported.people && imported.dates) {
+                        appData = imported;
+                        window.appData = appData;
                         saveLocalData();
-                        if (window.saveToCloud) window.saveToCloud();
+                        saveToCloud();
                         populateMonthSelectOptions();
-                        renderAll(false);
+                        renderAll();
                         showToast("Data restored successfully!");
                     } else {
-                        showToast("Invalid backup file format.", "error");
+                        showToast("Invalid backup file structure", 'error');
                     }
                 } catch (err) {
-                    showToast("Could not read backup file.", "error");
+                    showToast("Error parsing backup file", 'error');
                 }
             };
             reader.readAsText(file);
         }
+        window.importJSONBackup = importJSONBackup;
 
-        window.onload = function() {
-            if (localStorage.getItem('contributionTrackerTheme') === 'dark') {
+        function setFilter(filterType) {
+            activeFilter = filterType;
+            ['All', 'Month', 'Week', 'Missed'].forEach(type => {
+                const btn = document.getElementById(`btnFilter${type}`);
+                if (!btn) return;
+                if (type.toLowerCase() === filterType) {
+                    btn.className = "px-3 py-1 text-xs font-semibold rounded-md bg-white text-slate-800 shadow-xs";
+                } else {
+                    btn.className = "px-3 py-1 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-900";
+                }
+            });
+            renderAll();
+        }
+        window.setFilter = setFilter;
+
+        function handleMonthFilterChange(val) {
+            currentMonthFilter = val;
+            renderAll();
+        }
+        window.handleMonthFilterChange = handleMonthFilterChange;
+
+        function jumpToToday() {
+            const todayIndex = appData.dates.findIndex(d => isTodayDate(d));
+            if (todayIndex !== -1) {
+                renderAll();
+                setTimeout(() => {
+                    let elem = null;
+                    if (orientation === 'horizontal') {
+                        elem = document.getElementById(`date-row-${todayIndex}`);
+                    } else {
+                        elem = document.getElementById(`date-col-${todayIndex}`);
+                    }
+                    if (elem) {
+                        elem.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+                    }
+                }, 100);
+            } else {
+                showToast("Today's date is not in list. Add it using + Add Day", 'error');
+            }
+        }
+        window.jumpToToday = jumpToToday;
+
+        function openAddDayModal() {
+            const modal = document.getElementById('addDayModal');
+            const input = document.getElementById('newDateInput');
+            if (input) input.value = new Date().toISOString().slice(0, 10);
+            if (modal) modal.classList.remove('hidden');
+        }
+        window.openAddDayModal = openAddDayModal;
+
+        function closeAddDayModal() {
+            const modal = document.getElementById('addDayModal');
+            if (modal) modal.classList.add('hidden');
+        }
+        window.closeAddDayModal = closeAddDayModal;
+
+        function saveNewDay() {
+            const input = document.getElementById('newDateInput');
+            if (!input || !input.value) return;
+
+            const selected = new Date(input.value);
+            const dateStr = selected.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+            if (appData.dates.includes(dateStr)) {
+                showToast("Date already exists in list", 'error');
+                return;
+            }
+
+            appData.dates.push(dateStr);
+            appData.dates.sort((a, b) => new Date(a) - new Date(b));
+
+            saveLocalData();
+            saveToCloud();
+            populateMonthSelectOptions();
+            renderAll();
+            closeAddDayModal();
+            showToast(`Added ${dateStr}`);
+        }
+        window.saveNewDay = saveNewDay;
+
+        function openAddMonthModal() {
+            const modal = document.getElementById('addMonthModal');
+            const input = document.getElementById('newMonthInput');
+            if (input) {
+                const now = new Date();
+                input.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            }
+            if (modal) modal.classList.remove('hidden');
+        }
+        window.openAddMonthModal = openAddMonthModal;
+
+        function closeAddMonthModal() {
+            const modal = document.getElementById('addMonthModal');
+            if (modal) modal.classList.add('hidden');
+        }
+        window.closeAddMonthModal = closeAddMonthModal;
+
+        function saveNewMonth() {
+            const input = document.getElementById('newMonthInput');
+            if (!input || !input.value) return;
+
+            const [year, month] = input.value.split('-').map(Number);
+            const daysInMonth = new Date(year, month, 0).getDate();
+
+            let addedCount = 0;
+            for (let day = 1; day <= daysInMonth; day++) {
+                const d = new Date(year, month - 1, day);
+                const dateStr = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+                if (!appData.dates.includes(dateStr)) {
+                    appData.dates.push(dateStr);
+                    addedCount++;
+                }
+            }
+
+            appData.dates.sort((a, b) => new Date(a) - new Date(b));
+
+            saveLocalData();
+            saveToCloud();
+            populateMonthSelectOptions();
+            renderAll();
+            closeAddMonthModal();
+            showToast(`Generated ${addedCount} new dates`);
+        }
+        window.saveNewMonth = saveNewMonth;
+
+        function toggleOrientation() {
+            orientation = orientation === 'horizontal' ? 'vertical' : 'horizontal';
+            renderAll();
+        }
+        window.toggleOrientation = toggleOrientation;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('savings_tracker_theme');
+            if (savedTheme === 'dark') {
                 document.body.classList.add('dark-theme');
                 const themeIcon = document.getElementById('themeIcon');
                 if (themeIcon) themeIcon.setAttribute('data-lucide', 'sun');
             }
+
             loadLocalData();
-        };
+
+            const rateDisplay = document.getElementById('displayDailyRate');
+            if (rateDisplay) rateDisplay.textContent = `₱${appData.dailyRate || 20}`;
+
+            const intDisplay = document.getElementById('displayInterestRate');
+            if (intDisplay) intDisplay.textContent = `${appData.interestRate || 3}%`;
+
+            initCloudSync();
+        });
     </script>
 </body>
 </html>

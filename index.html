@@ -103,9 +103,9 @@
                     <i data-lucide="coins" class="w-4 h-4 text-emerald-600"></i>
                     Rate: <span id="displayDailyRate">₱20</span>/day
                 </button>
-                <button onclick="changeInterest()" class="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer" title="Click to edit interest rate">
-                    <i data-lucide="trending-up" class="w-4 h-4 text-indigo-600"></i>
-                    Int: <span id="displayInterestRate">3%</span>
+                <button onclick="openMariBankModal()" class="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer" title="MariBank Interest Settings & Breakdown">
+                    <i data-lucide="landmark" class="w-4 h-4 text-indigo-600"></i>
+                    MariBank: <span id="displayInterestRate">3.25%</span>
                     <i data-lucide="pencil" class="w-3 h-3 text-indigo-500 opacity-70"></i>
                 </button>
                 <button onclick="toggleTheme()" class="p-2 text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200 transition" title="Toggle Theme">
@@ -258,6 +258,69 @@
         </div>
     </div>
 
+    <!-- MariBank Interest Details & Settings Modal -->
+    <div id="mariBankModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i data-lucide="landmark" class="w-5 h-5 text-emerald-600"></i> MariBank Interest Calculation
+                </h3>
+                <button onclick="closeMariBankModal()" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Breakdown Card -->
+            <div id="mariBankBreakdownContent" class="bg-emerald-50 border border-emerald-200/80 rounded-xl p-4 space-y-2 text-xs text-slate-700">
+                <!-- Dynamically Populated Breakdown -->
+            </div>
+
+            <!-- Rate Settings -->
+            <div class="space-y-3 pt-2 border-t border-slate-100">
+                <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Interest Rate & Balance Settings</h4>
+                
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Accumulated / Earned Interest So Far:</label>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-xs font-bold text-slate-500">₱</span>
+                        <input type="number" id="mbAccInterestInput" step="0.01" min="0" class="w-full border border-slate-300 rounded-xl p-2 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="6.29">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Tier 1 Rate (&le; ₱1M):</label>
+                        <div class="flex items-center gap-1.5">
+                            <input type="number" id="mbTier1Input" step="0.01" min="0" class="w-full border border-slate-300 rounded-xl p-2 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                            <span class="text-xs font-bold text-slate-500">% p.a.</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Tier 2 Rate (&gt; ₱1M):</label>
+                        <div class="flex items-center gap-1.5">
+                            <input type="number" id="mbTier2Input" step="0.01" min="0" class="w-full border border-slate-300 rounded-xl p-2 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                            <span class="text-xs font-bold text-slate-500">% p.a.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">PH Withholding Tax Rate:</label>
+                    <div class="flex items-center gap-1.5">
+                        <input type="number" id="mbTaxInput" step="0.1" min="0" max="100" class="w-full border border-slate-300 rounded-xl p-2 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                        <span class="text-xs font-bold text-slate-500">%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button onclick="closeMariBankModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-xs font-semibold">Close</button>
+                <button onclick="saveMariBankSettings()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Notes Modal -->
     <div id="noteModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center hidden p-4">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-100 space-y-4">
@@ -345,6 +408,7 @@
         const defaultData = {
             dailyRate: 20,
             interestRate: 3,
+            accumulatedInterest: 6.29,
             people: ["Matt", "Tif"],
             dates: [
                 "August 23, 2026", "August 24, 2026", "August 25, 2026",
@@ -565,6 +629,7 @@
                     appData = JSON.parse(saved);
                     if (appData.dailyRate === undefined) appData.dailyRate = 20;
                     if (appData.interestRate === undefined) appData.interestRate = 3;
+                    if (appData.accumulatedInterest === undefined) appData.accumulatedInterest = 6.29;
                 } catch (e) {
                     appData = JSON.parse(JSON.stringify(defaultData));
                 }
@@ -742,6 +807,48 @@
                     totalSaved: totalChecked * appData.dailyRate
                 };
             });
+        }
+
+        function getMariBankRates() {
+            return {
+                tier1: appData.mariBankTier1 !== undefined ? appData.mariBankTier1 : 3.25,
+                tier2: appData.mariBankTier2 !== undefined ? appData.mariBankTier2 : 3.75,
+                tax: appData.mariBankTax !== undefined ? appData.mariBankTax : 20
+            };
+        }
+
+        function calculateMariBankInterest(principal) {
+            const rates = getMariBankRates();
+            if (principal <= 0) {
+                return { grossDaily: 0, netDaily: 0, netTaxDaily: 0, netMonthly: 0, netYearlyCompounded: 0, total1Yr: 0 };
+            }
+
+            let grossDaily = 0;
+            if (principal <= 1000000) {
+                grossDaily = (principal * (rates.tier1 / 100)) / 365;
+            } else {
+                const tier1Gross = (1000000 * (rates.tier1 / 100)) / 365;
+                const tier2Gross = ((principal - 1000000) * (rates.tier2 / 100)) / 365;
+                grossDaily = tier1Gross + tier2Gross;
+            }
+
+            const taxMultiplier = (100 - rates.tax) / 100;
+            const netDaily = grossDaily * taxMultiplier;
+            const netTaxDaily = grossDaily * (rates.tax / 100);
+            const netMonthly = netDaily * 30;
+
+            const effectiveDailyRate = netDaily / principal;
+            const total1Yr = principal * Math.pow(1 + effectiveDailyRate, 365);
+            const netYearlyCompounded = total1Yr - principal;
+
+            return {
+                grossDaily,
+                netDaily,
+                netTaxDaily,
+                netMonthly,
+                netYearlyCompounded,
+                total1Yr
+            };
         }
 
         function createCellTd(pIndex, dIndex, isToday = false) {
@@ -962,9 +1069,11 @@
             let jointSavings = 0;
             stats.forEach(s => jointSavings += s.totalSaved);
 
-            const interestRate = appData.interestRate || 3;
-            const projectedInterest = jointSavings * (interestRate / 100);
-            const totalFutureValue = jointSavings + projectedInterest;
+            const pastInterest = parseFloat(appData.accumulatedInterest || 0);
+            const totalBalance = jointSavings + pastInterest;
+
+            const mb = calculateMariBankInterest(totalBalance);
+            const rates = getMariBankRates();
 
             const personThemes = [
                 { dot: 'bg-sky-500', badgeBg: 'bg-sky-50', badgeBorder: 'border-sky-200', badgeText: 'text-sky-700' },
@@ -975,12 +1084,11 @@
 
             let html = '';
 
-            // Individual Progress Cards (e.g., Matt's Progress, Tif's Progress)
+            // Individual Progress Cards
             stats.forEach((s, pIndex) => {
                 const theme = personThemes[pIndex % personThemes.length];
                 html += `
                     <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-4">
-                        <!-- Card Header -->
                         <div class="flex items-center justify-between pb-3 border-b border-slate-100">
                             <div class="flex items-center gap-2 font-bold text-slate-900 text-base">
                                 <span class="w-3 h-3 rounded-full ${theme.dot} shrink-0"></span>
@@ -991,7 +1099,6 @@
                             </div>
                         </div>
 
-                        <!-- Card Stats Grid -->
                         <div class="grid grid-cols-2 gap-4 pt-1">
                             <div>
                                 <div class="text-xs text-slate-400 font-medium">Total Checkmarks</div>
@@ -1005,39 +1112,49 @@
                     </div>`;
             });
 
-            // Joint Future Savings Card
+            // MariBank Joint Savings Card
             html += `
                 <div class="bg-[#0f172a] text-slate-100 rounded-2xl p-5 shadow-lg border border-slate-800 flex flex-col justify-between space-y-4">
-                    <!-- Header -->
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2 font-bold text-white text-base">
                             <i data-lucide="piggy-bank" class="w-5 h-5 text-amber-400"></i>
-                            <span>Joint Future Savings</span>
+                            <span>MariBank Joint Savings</span>
                         </div>
-                        <button onclick="changeInterest()" class="px-3 py-1 rounded-full border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer" title="Edit interest rate">
-                            +${interestRate}% Interest
-                            <i data-lucide="pencil" class="w-3 h-3 text-amber-400"></i>
+                        <button onclick="openMariBankModal()" class="px-3 py-1 rounded-full border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer" title="MariBank Settings & Breakdown">
+                            ${rates.tier1}% p.a.
+                            <i data-lucide="info" class="w-3.5 h-3.5 text-amber-400"></i>
                         </button>
                     </div>
 
-                    <!-- Breakdown Rows -->
                     <div class="space-y-2 pt-1">
                         <div class="flex items-center justify-between text-xs md:text-sm">
-                            <span class="text-slate-300 font-medium">Base Savings:</span>
+                            <span class="text-slate-300 font-medium">Base Contributions:</span>
                             <span class="font-bold text-white">₱${jointSavings.toLocaleString()}</span>
                         </div>
                         <div class="flex items-center justify-between text-xs md:text-sm">
-                            <span class="text-emerald-400 font-medium">Projected Interest (+${interestRate}%):</span>
-                            <span class="font-bold text-emerald-400">₱${projectedInterest.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            <span class="text-slate-300 font-medium">Earned Interest:</span>
+                            <span class="font-bold text-emerald-400">+₱${pastInterest.toFixed(2)}</span>
+                        </div>
+                        <div class="flex items-center justify-between text-xs md:text-sm border-t border-slate-700/60 pt-1.5">
+                            <span class="text-slate-200 font-semibold">Total Bank Balance:</span>
+                            <span class="font-extrabold text-white text-sm md:text-base">₱${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        <div class="flex items-center justify-between text-xs md:text-sm">
+                            <span class="text-emerald-400 font-medium">Net Daily Interest:</span>
+                            <span class="font-bold text-emerald-400">+₱${mb.netDaily.toFixed(2)} / day</span>
+                        </div>
+                        <div class="flex items-center justify-between text-xs md:text-sm">
+                            <span class="text-slate-300 font-medium">1-Yr Net Interest (Compounded):</span>
+                            <span class="font-bold text-emerald-400">+₱${mb.netYearlyCompounded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                     </div>
 
-                    <!-- Divider & Total -->
                     <div class="border-t border-slate-700/80 pt-3">
                         <div class="flex items-center justify-between">
-                            <span class="font-extrabold text-amber-400 text-sm md:text-base">Total Future Value:</span>
-                            <span class="font-black text-amber-400 text-lg md:text-xl">₱${totalFutureValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            <span class="font-extrabold text-amber-400 text-sm md:text-base">1-Yr Total Projected Value:</span>
+                            <span class="font-black text-amber-400 text-lg md:text-xl">₱${mb.total1Yr.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
+                        <p class="text-[10px] text-slate-400 mt-1 text-right">Credited daily midnight · Less ${rates.tax}% PH tax</p>
                     </div>
                 </div>`;
 
@@ -1231,6 +1348,110 @@
             }
         }
         window.saveCustomFirebaseConfig = saveCustomFirebaseConfig;
+
+        function openMariBankModal() {
+            const modal = document.getElementById('mariBankModal');
+            const breakdown = document.getElementById('mariBankBreakdownContent');
+            const rates = getMariBankRates();
+
+            let jointSavings = 0;
+            const stats = calculateStreaksAndStats();
+            stats.forEach(s => jointSavings += s.totalSaved);
+
+            const pastInterest = parseFloat(appData.accumulatedInterest || 0);
+            const totalBalance = jointSavings + pastInterest;
+
+            const mb = calculateMariBankInterest(totalBalance);
+
+            if (breakdown) {
+                breakdown.innerHTML = `
+                    <div class="font-bold text-emerald-900 border-b border-emerald-200/80 pb-2 flex justify-between items-center">
+                        <span>MariBank Daily Interest Breakdown</span>
+                        <span class="bg-emerald-200/80 text-emerald-800 px-2 py-0.5 rounded text-[10px]">Credited Midnight</span>
+                    </div>
+                    <div class="space-y-1.5 pt-1">
+                        <div class="flex justify-between">
+                            <span class="text-slate-600">Base Contributions:</span>
+                            <span class="font-semibold text-slate-800">₱${jointSavings.toLocaleString()}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-emerald-700 font-medium">Past Earned Interest:</span>
+                            <span class="font-semibold text-emerald-700">+₱${pastInterest.toFixed(2)}</span>
+                        </div>
+                        <div class="flex justify-between border-t border-emerald-200/60 pt-1 font-bold text-slate-900">
+                            <span>Total Earning Balance:</span>
+                            <span>₱${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        <div class="flex justify-between pt-1">
+                            <span class="text-slate-600">Gross Daily Interest (${rates.tier1}% p.a.):</span>
+                            <span class="font-semibold text-slate-800">₱${mb.grossDaily.toFixed(4)} / day</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-rose-600">Less ${rates.tax}% Withholding Tax:</span>
+                            <span class="font-semibold text-rose-600">-₱${mb.netTaxDaily.toFixed(4)} / day</span>
+                        </div>
+                        <div class="flex justify-between border-t border-emerald-200/60 pt-1 font-bold">
+                            <span class="text-emerald-900">Net Daily Credited:</span>
+                            <span class="text-emerald-700">₱${mb.netDaily.toFixed(2)} / day</span>
+                        </div>
+                        <div class="flex justify-between pt-1 text-[11px]">
+                            <span class="text-slate-600">30-Day Estimated Gain:</span>
+                            <span class="font-semibold text-slate-800">₱${mb.netMonthly.toFixed(2)}</span>
+                        </div>
+                        <div class="flex justify-between text-[11px]">
+                            <span class="text-slate-600">1-Year Compounded Net Yield:</span>
+                            <span class="font-bold text-emerald-700">₱${mb.netYearlyCompounded.toFixed(2)}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const accInterestInput = document.getElementById('mbAccInterestInput');
+            const t1Input = document.getElementById('mbTier1Input');
+            const t2Input = document.getElementById('mbTier2Input');
+            const taxInput = document.getElementById('mbTaxInput');
+
+            if (accInterestInput) accInterestInput.value = pastInterest;
+            if (t1Input) t1Input.value = rates.tier1;
+            if (t2Input) t2Input.value = rates.tier2;
+            if (taxInput) taxInput.value = rates.tax;
+
+            if (modal) modal.classList.remove('hidden');
+        }
+        window.openMariBankModal = openMariBankModal;
+
+        function closeMariBankModal() {
+            const modal = document.getElementById('mariBankModal');
+            if (modal) modal.classList.add('hidden');
+        }
+        window.closeMariBankModal = closeMariBankModal;
+
+        function saveMariBankSettings() {
+            const accInterest = parseFloat(document.getElementById('mbAccInterestInput').value);
+            const t1 = parseFloat(document.getElementById('mbTier1Input').value);
+            const t2 = parseFloat(document.getElementById('mbTier2Input').value);
+            const tax = parseFloat(document.getElementById('mbTaxInput').value);
+
+            if (isNaN(accInterest) || isNaN(t1) || isNaN(t2) || isNaN(tax) || accInterest < 0 || t1 < 0 || t2 < 0 || tax < 0) {
+                showToast("Please enter valid rates and numbers", 'error');
+                return;
+            }
+
+            appData.accumulatedInterest = accInterest;
+            appData.mariBankTier1 = t1;
+            appData.mariBankTier2 = t2;
+            appData.mariBankTax = tax;
+
+            const rateDisp = document.getElementById('displayInterestRate');
+            if (rateDisp) rateDisp.textContent = `${t1}%`;
+
+            saveLocalData();
+            saveToCloud();
+            renderAll();
+            closeMariBankModal();
+            showToast("MariBank settings & interest updated!");
+        }
+        window.saveMariBankSettings = saveMariBankSettings;
 
         function clearFirebaseConfig() {
             localStorage.removeItem('savings_tracker_firebase_config');
@@ -1526,7 +1747,7 @@
             if (rateDisplay) rateDisplay.textContent = `₱${appData.dailyRate || 20}`;
 
             const intDisplay = document.getElementById('displayInterestRate');
-            if (intDisplay) intDisplay.textContent = `${appData.interestRate || 3}%`;
+            if (intDisplay) intDisplay.textContent = `${appData.mariBankTier1 || 3.25}%`;
 
             initCloudSync();
         });

@@ -111,13 +111,6 @@
                 <button onclick="toggleTheme()" class="p-2 text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200 transition" title="Toggle Theme">
                     <i data-lucide="moon" id="themeIcon" class="w-4 h-4"></i>
                 </button>
-                <button onclick="exportJSONBackup()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium flex items-center gap-1.5 transition" title="Backup all data to a file">
-                    <i data-lucide="download" class="w-4 h-4"></i> Backup
-                </button>
-                <label class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium flex items-center gap-1.5 transition cursor-pointer" title="Restore data from backup file">
-                    <i data-lucide="upload" class="w-4 h-4"></i> Restore
-                    <input type="file" id="importFile" accept=".json" onchange="importJSONBackup(event)" class="hidden">
-                </label>
             </div>
         </div>
     </header>
@@ -277,7 +270,12 @@
 
             <!-- Rate Settings -->
             <div class="space-y-3 pt-2 border-t border-slate-100">
-                <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Interest Rate & Balance Settings</h4>
+                <div class="flex items-center justify-between">
+                    <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Interest Rate & Balance Settings</h4>
+                    <span class="text-2xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                        <i data-lucide="clock" class="w-3 h-3"></i> Auto-Credit Active
+                    </span>
+                </div>
                 
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Accumulated / Earned Interest So Far:</label>
@@ -285,6 +283,7 @@
                         <span class="text-xs font-bold text-slate-500">₱</span>
                         <input type="number" id="mbAccInterestInput" step="0.01" min="0" class="w-full border border-slate-300 rounded-xl p-2 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="6.29">
                     </div>
+                    <span id="mbLastAccrualLabel" class="text-[10px] text-slate-400 mt-1 block">Last auto-credited date: --</span>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
@@ -405,10 +404,25 @@
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'for-us-savings-tracker';
 
+        function getLocalDateString(dateObj = new Date()) {
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function parseLocalDateString(str) {
+            if (!str) return new Date();
+            const parts = str.split('-');
+            if (parts.length !== 3) return new Date(str);
+            return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]), 0, 0, 0, 0);
+        }
+
         const defaultData = {
             dailyRate: 20,
             interestRate: 3,
             accumulatedInterest: 6.29,
+            lastInterestAccrualDate: getLocalDateString(),
             people: ["Matt", "Tif"],
             dates: [
                 "August 23, 2026", "August 24, 2026", "August 25, 2026",
@@ -542,6 +556,87 @@
         }
         window.saveToCloud = saveToCloud;
 
+        function checkAndAccrueDailyInterest() {
+            if (!window.appData) return false;
+
+            const todayStr = getLocalDateString(new Date());
+
+            if (!appData.lastInterestAccrualDate) {
+                appData.lastInterestAccrualDate = todayStr;
+                saveLocalData();
+                return false;
+            }
+
+            const lastDate = parseLocalDateString(appData.lastInterestAccrualDate);
+            const todayDate = parseLocalDateString(todayStr);
+
+            if (isNaN(lastDate.getTime()) || isNaN(todayDate.getTime())) {
+                appData.lastInterestAccrualDate = todayStr;
+                saveLocalData();
+                return false;
+            }
+
+            const diffTime = todayDate.getTime() - lastDate.getTime();
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays <= 0) return false;
+
+            let totalAccruedInBatch = 0;
+            let tempAccruedInterest = parseFloat(appData.accumulatedInterest || 0);
+            let currDate = new Date(lastDate);
+
+            for (let i = 0; i < diffDays; i++) {
+                // Calculate total base contributions up to currDate
+                let baseContributions = 0;
+                appData.people.forEach((_, pIndex) => {
+                    appData.dates.forEach((dateStr, dIndex) => {
+                        const cellDate = new Date(dateStr);
+                        cellDate.setHours(0, 0, 0, 0);
+                        if (!isNaN(cellDate.getTime()) && cellDate <= currDate) {
+                            const cellId = getCellId(pIndex, dIndex);
+                            const cell = appData.cells[cellId];
+                            if (cell && (cell.status === 'done' || cell.checked)) {
+                                baseContributions += (appData.dailyRate || 20);
+                            }
+                        }
+                    });
+                });
+
+                const dayEarningPrincipal = baseContributions + tempAccruedInterest;
+                const dayNetInterest = calculateMariBankInterest(dayEarningPrincipal).netDaily;
+
+                if (dayNetInterest > 0) {
+                    tempAccruedInterest += dayNetInterest;
+                    totalAccruedInBatch += dayNetInterest;
+                }
+
+                currDate.setDate(currDate.getDate() + 1);
+            }
+
+            appData.accumulatedInterest = parseFloat(tempAccruedInterest.toFixed(2));
+            appData.lastInterestAccrualDate = todayStr;
+
+            saveLocalData();
+            saveToCloud();
+
+            if (totalAccruedInBatch > 0) {
+                showToast(`Auto-credited +₱${totalAccruedInBatch.toFixed(2)} interest for ${diffDays} day(s)!`);
+            }
+            return true;
+        }
+
+        function scheduleMidnightInterestCheck() {
+            const now = new Date();
+            const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5);
+            const msToMidnight = midnight.getTime() - now.getTime();
+
+            setTimeout(() => {
+                const accrued = checkAndAccrueDailyInterest();
+                if (accrued) renderAll(true);
+                scheduleMidnightInterestCheck();
+            }, msToMidnight);
+        }
+
         function setupRealtimeSync(roomId) {
             if (!db) return;
             const trackerRef = doc(db, 'artifacts', appId, 'public', 'data', 'trackers', roomId);
@@ -556,6 +651,7 @@
                         window.appData = Object.assign({}, defaultData, cloudDoc.data);
                         appData = window.appData;
 
+                        checkAndAccrueDailyInterest();
                         saveLocalData();
                         populateMonthSelectOptions();
                         renderAll(true);
@@ -630,6 +726,7 @@
                     if (appData.dailyRate === undefined) appData.dailyRate = 20;
                     if (appData.interestRate === undefined) appData.interestRate = 3;
                     if (appData.accumulatedInterest === undefined) appData.accumulatedInterest = 6.29;
+                    if (!appData.lastInterestAccrualDate) appData.lastInterestAccrualDate = getLocalDateString();
                 } catch (e) {
                     appData = JSON.parse(JSON.stringify(defaultData));
                 }
@@ -637,6 +734,7 @@
                 appData = JSON.parse(JSON.stringify(defaultData));
             }
             window.appData = appData;
+            checkAndAccrueDailyInterest();
             populateMonthSelectOptions();
             renderAll();
         }
@@ -1375,7 +1473,7 @@
                             <span class="font-semibold text-slate-800">₱${jointSavings.toLocaleString()}</span>
                         </div>
                         <div class="flex justify-between">
-                            <span class="text-emerald-700 font-medium">Past Earned Interest:</span>
+                            <span class="text-emerald-700 font-medium">Accumulated Earned Interest:</span>
                             <span class="font-semibold text-emerald-700">+₱${pastInterest.toFixed(2)}</span>
                         </div>
                         <div class="flex justify-between border-t border-emerald-200/60 pt-1 font-bold text-slate-900">
@@ -1407,11 +1505,13 @@
             }
 
             const accInterestInput = document.getElementById('mbAccInterestInput');
+            const lastAccrualLabel = document.getElementById('mbLastAccrualLabel');
             const t1Input = document.getElementById('mbTier1Input');
             const t2Input = document.getElementById('mbTier2Input');
             const taxInput = document.getElementById('mbTaxInput');
 
             if (accInterestInput) accInterestInput.value = pastInterest;
+            if (lastAccrualLabel) lastAccrualLabel.textContent = `Last auto-credited date: ${appData.lastInterestAccrualDate || getLocalDateString()}`;
             if (t1Input) t1Input.value = rates.tier1;
             if (t2Input) t2Input.value = rates.tier2;
             if (taxInput) taxInput.value = rates.tax;
@@ -1555,6 +1655,105 @@
             showToast("Backup downloaded!");
         }
         window.exportJSONBackup = exportJSONBackup;
+
+        function escapeCSVCell(str) {
+            if (str === null || str === undefined) return '""';
+            const text = String(str).replace(/"/g, '""');
+            return `"${text}"`;
+        }
+
+        function exportCSV() {
+            if (!appData || !appData.dates) {
+                showToast("No data available to export", 'error');
+                return;
+            }
+
+            const rows = [];
+            
+            // CSV Header Row
+            const headers = ['Date'];
+            appData.people.forEach(p => {
+                headers.push(`${p} Status`, `${p} Amount (₱)`, `${p} Timestamp`, `${p} Notes`);
+            });
+            headers.push('Total Day Base Saved (₱)');
+            rows.push(headers.map(escapeCSVCell).join(','));
+
+            let grandTotalBase = 0;
+            const personTotals = appData.people.map(() => 0);
+
+            appData.dates.forEach((dateStr, dIndex) => {
+                const row = [dateStr];
+                let dayTotal = 0;
+                const isPast = isPastDate(dateStr);
+
+                appData.people.forEach((_, pIndex) => {
+                    const cellId = getCellId(pIndex, dIndex);
+                    const cell = appData.cells[cellId] || {};
+                    const isChecked = cell.status === 'done' || cell.checked;
+
+                    if (isChecked) {
+                        const amount = appData.dailyRate || 20;
+                        personTotals[pIndex] += amount;
+                        dayTotal += amount;
+                        row.push('Saved', amount.toFixed(2), cell.timestamp || '', cell.notes || '');
+                    } else {
+                        const status = isPast ? 'Missed' : 'Pending';
+                        row.push(status, '0.00', '', cell.notes || '');
+                    }
+                });
+
+                grandTotalBase += dayTotal;
+                row.push(dayTotal.toFixed(2));
+                rows.push(row.map(escapeCSVCell).join(','));
+            });
+
+            // Blank Row Separator
+            rows.push('');
+
+            // Summary Breakdown Section in CSV
+            rows.push([escapeCSVCell('--- SUMMARY BREAKDOWN ---')]);
+
+            appData.people.forEach((person, pIndex) => {
+                rows.push([
+                    escapeCSVCell(`${person} Total Contributions`),
+                    escapeCSVCell(`₱${personTotals[pIndex].toLocaleString()}`)
+                ].join(','));
+            });
+
+            const accumulatedInterest = parseFloat(appData.accumulatedInterest || 0);
+            const totalBalance = grandTotalBase + accumulatedInterest;
+
+            rows.push([
+                escapeCSVCell('Total Joint Base Savings'),
+                escapeCSVCell(`₱${grandTotalBase.toLocaleString()}`)
+            ].join(','));
+
+            rows.push([
+                escapeCSVCell('Earned MariBank Interest So Far'),
+                escapeCSVCell(`₱${accumulatedInterest.toFixed(2)}`)
+            ].join(','));
+
+            rows.push([
+                escapeCSVCell('Total Current MariBank Balance'),
+                escapeCSVCell(`₱${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+            ].join(','));
+
+            // Include UTF-8 Byte Order Mark (\uFEFF) so Excel opens Peso symbols without encoding issues
+            const csvContent = "\uFEFF" + rows.join("\n");
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute('href', url);
+            dlAnchor.setAttribute('download', `for_us_savings_history_${new Date().toISOString().slice(0, 10)}.csv`);
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
+            URL.revokeObjectURL(url);
+
+            showToast("CSV file exported!");
+        }
+        window.exportCSV = exportCSV;
 
         function importJSONBackup(event) {
             const file = event.target.files[0];
@@ -1750,6 +1949,7 @@
             if (intDisplay) intDisplay.textContent = `${appData.mariBankTier1 || 3.25}%`;
 
             initCloudSync();
+            scheduleMidnightInterestCheck();
         });
     </script>
 </body>

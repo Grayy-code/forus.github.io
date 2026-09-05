@@ -472,7 +472,7 @@
                 "September 10, 2026", "September 11, 2026", "September 12, 2026", "September 13, 2026", "September 14, 2026",
                 "September 15, 2026", "September 16, 2026", "September 17, 2026", "September 18, 2026", "September 19, 2026",
                 "September 20, 2026", "September 21, 2026", "September 22, 2026", "September 23, 2026", "September 24, 2026",
-                "September 25, 2026", "September 26, 2026"
+                "September 25, 2026", "September 26, 2026", "September 27, 2026", "September 28, 2026", "September 29, 2026", "September 30, 2026"
             ],
             cells: {
                 "r0_c2": { status: "done", checked: true, timestamp: "Aug 25 · 09:30 AM", notes: "Saved ₱20" },
@@ -626,7 +626,6 @@
             let currDate = new Date(lastDate);
 
             for (let i = 0; i < diffDays; i++) {
-                // Calculate total base contributions up to currDate
                 let baseContributions = 0;
                 appData.people.forEach((_, pIndex) => {
                     appData.dates.forEach((dateStr, dIndex) => {
@@ -677,6 +676,25 @@
             }, msToMidnight);
         }
 
+        function ensureFullSeptember2026() {
+            const fullSepDates = [
+                "September 27, 2026",
+                "September 28, 2026",
+                "September 29, 2026",
+                "September 30, 2026"
+            ];
+            let added = false;
+            fullSepDates.forEach(d => {
+                if (!appData.dates.includes(d)) {
+                    appData.dates.push(d);
+                    added = true;
+                }
+            });
+            if (added) {
+                appData.dates.sort((a, b) => new Date(a) - new Date(b));
+            }
+        }
+
         function setupRealtimeSync(roomId) {
             if (!db) return;
             const trackerRef = doc(db, 'artifacts', appId, 'public', 'data', 'trackers', roomId);
@@ -691,6 +709,7 @@
                         window.appData = Object.assign({}, defaultData, cloudDoc.data);
                         appData = window.appData;
 
+                        ensureFullSeptember2026();
                         checkAndAccrueDailyInterest();
                         saveLocalData();
                         populateMonthSelectOptions();
@@ -773,6 +792,7 @@
             } else {
                 appData = JSON.parse(JSON.stringify(defaultData));
             }
+            ensureFullSeptember2026();
             window.appData = appData;
             checkAndAccrueDailyInterest();
             populateMonthSelectOptions();
@@ -1222,7 +1242,6 @@
 
             let html = '';
 
-            // Individual Progress Cards
             stats.forEach((s, pIndex) => {
                 const theme = personThemes[pIndex % personThemes.length];
                 html += `
@@ -1250,7 +1269,6 @@
                     </div>`;
             });
 
-            // MariBank Joint Savings Card
             html += `
                 <div class="bg-[#0f172a] text-slate-100 rounded-2xl p-5 shadow-lg border border-slate-800 flex flex-col justify-between space-y-4">
                     <div class="flex items-center justify-between">
@@ -1709,8 +1727,6 @@
             }
 
             const rows = [];
-            
-            // CSV Header Row
             const headers = ['Date'];
             appData.people.forEach(p => {
                 headers.push(`${p} Status`, `${p} Amount (₱)`, `${p} Timestamp`, `${p} Notes`);
@@ -1747,10 +1763,7 @@
                 rows.push(row.map(escapeCSVCell).join(','));
             });
 
-            // Blank Row Separator
             rows.push('');
-
-            // Summary Breakdown Section in CSV
             rows.push([escapeCSVCell('--- SUMMARY BREAKDOWN ---')]);
 
             appData.people.forEach((person, pIndex) => {
@@ -1778,7 +1791,6 @@
                 escapeCSVCell(`₱${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
             ].join(','));
 
-            // Include UTF-8 Byte Order Mark (\uFEFF) so Excel opens Peso symbols without encoding issues
             const csvContent = "\uFEFF" + rows.join("\n");
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
@@ -1806,6 +1818,7 @@
                     if (imported && imported.people && imported.dates) {
                         appData = imported;
                         window.appData = appData;
+                        ensureFullSeptember2026();
                         saveLocalData();
                         saveToCloud();
                         populateMonthSelectOptions();
@@ -1846,7 +1859,6 @@
         function jumpToToday() {
             const todayIndex = appData.dates.findIndex(d => isTodayDate(d));
             if (todayIndex !== -1) {
-                // Reset active month and quick filters so Today's date is guaranteed to be rendered
                 currentMonthFilter = 'all';
                 activeFilter = 'all';
 

@@ -448,6 +448,14 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'for-us-savings-tracker';
         const clientId = 'client_' + Math.random().toString(36).substring(2, 9);
 
+        let db = null;
+        let auth = null;
+        let unsubscribeSync = null;
+        let ntfyEventSource = null;
+        let localBroadcastChannel = null;
+        let isSyncingFromCloud = false;
+        let syncMode = 'relay'; // 'relay' or 'firebase'
+
         function getLocalDateString(dateObj = new Date()) {
             const year = dateObj.getFullYear();
             const month = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -483,13 +491,6 @@
                 "r1_c2": { status: "done", checked: true, timestamp: "Aug 25 · 10:15 AM", notes: "Saved ₱20" }
             }
         };
-
-        let db = null;
-        let auth = null;
-        let unsubscribeSync = null;
-        let ntfyEventSource = null;
-        let isSyncingFromCloud = false;
-        let syncMode = 'relay'; // 'relay' or 'firebase'
 
         let appData = JSON.parse(JSON.stringify(defaultData));
         window.appData = appData;
@@ -578,12 +579,29 @@
                 ntfyEventSource.close();
                 ntfyEventSource = null;
             }
+            if (localBroadcastChannel) {
+                localBroadcastChannel.close();
+                localBroadcastChannel = null;
+            }
 
             const topic = getCleanRoomTopic(roomId);
             updateSyncUIStatus('connecting');
 
+            // Setup local browser tab-to-tab sync channel
             try {
-                ntfyEventSource = new EventSource(`https://ntfy.sh/${topic}/json`);
+                localBroadcastChannel = new BroadcastChannel(`forus_channel_${topic}`);
+                localBroadcastChannel.onmessage = (event) => {
+                    if (event.data && event.data.senderId !== clientId) {
+                        handleIncomingPayload(event.data);
+                    }
+                };
+            } catch (e) {
+                console.warn("BroadcastChannel not supported:", e);
+            }
+
+            try {
+                // Correct SSE endpoint for browser EventSource API is /sse
+                ntfyEventSource = new EventSource(`https://ntfy.sh/${topic}/sse`);
 
                 ntfyEventSource.onopen = () => {
                     syncMode = 'relay';
@@ -598,40 +616,28 @@
                         const payload = JSON.parse(parsed.message);
                         if (payload.senderId === clientId) return; // Ignore self updates
 
-                        if (payload.data && payload.type === 'SYNC_DATA') {
-                            isSyncingFromCloud = true;
-                            window.appData = Object.assign({}, defaultData, payload.data);
-                            appData = window.appData;
-
-                            ensureFullSeptember2026();
-                            checkAndAccrueDailyInterest();
-                            saveLocalData();
-                            populateMonthSelectOptions();
-                            renderAll(true);
-
-                            isSyncingFromCloud = false;
-                            showToast("Updated in real-time from partner 💕");
-                        } else if (payload.type === 'REQUEST_STATE') {
-                            // Another device just connected, broadcast our current state to them
-                            broadcastLocalState();
-                        }
+                        handleIncomingPayload(payload);
                     } catch (e) {
                         // Ignore non-json system ping messages
                     }
                 };
 
                 ntfyEventSource.onerror = (err) => {
-                    console.warn("Relay event stream warning:", err);
-                    updateSyncUIStatus('connecting');
+                    console.warn("Relay stream reconnecting...", err);
+                    if (ntfyEventSource && ntfyEventSource.readyState === EventSource.CLOSED) {
+                        updateSyncUIStatus('error', 'Connection lost. Reconnecting...');
+                    } else {
+                        updateSyncUIStatus('connecting', 'Reconnecting to live room...');
+                    }
                 };
 
-                // Send request for initial state from other peers in the room
+                // Request state from active peers upon joining
                 setTimeout(() => {
                     fetch(`https://ntfy.sh/${topic}`, {
                         method: 'POST',
                         body: JSON.stringify({ senderId: clientId, type: 'REQUEST_STATE' })
                     }).catch(() => {});
-                }, 1000);
+                }, 800);
 
             } catch (err) {
                 console.error("Relay stream error:", err);
@@ -639,9 +645,43 @@
             }
         }
 
+        function handleIncomingPayload(payload) {
+            if (payload.data && payload.type === 'SYNC_DATA') {
+                isSyncingFromCloud = true;
+                window.appData = Object.assign({}, defaultData, payload.data);
+                appData = window.appData;
+
+                ensureFullSeptember2026();
+                checkAndAccrueDailyInterest();
+                saveLocalData();
+                populateMonthSelectOptions();
+                renderAll(true);
+
+                isSyncingFromCloud = false;
+                updateSyncUIStatus('live');
+                showToast("Updated live from partner 💕");
+            } else if (payload.type === 'REQUEST_STATE') {
+                broadcastLocalState();
+            }
+        }
+
         async function broadcastLocalState() {
             if (isSyncingFromCloud) return;
             const topic = getCleanRoomTopic(currentRoomId);
+
+            const payload = {
+                senderId: clientId,
+                type: 'SYNC_DATA',
+                data: window.appData,
+                timestamp: Date.now()
+            };
+
+            // Broadcast locally across browser tabs
+            if (localBroadcastChannel) {
+                try {
+                    localBroadcastChannel.postMessage(payload);
+                } catch(e) {}
+            }
 
             if (syncMode === 'firebase' && db) {
                 try {
@@ -662,18 +702,19 @@
                 await fetch(`https://ntfy.sh/${topic}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        senderId: clientId,
-                        type: 'SYNC_DATA',
-                        data: window.appData,
-                        timestamp: Date.now()
-                    })
+                    body: JSON.stringify(payload)
                 });
             } catch (e) {
                 console.warn("Failed to broadcast state:", e);
             }
         }
         window.saveToCloud = broadcastLocalState;
+
+        function forceSyncPush() {
+            broadcastLocalState();
+            showToast("Pushed current data to room!");
+        }
+        window.forceSyncPush = forceSyncPush;
 
         function checkAndAccrueDailyInterest() {
             if (!window.appData) return false;

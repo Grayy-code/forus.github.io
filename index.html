@@ -212,12 +212,12 @@
             </div>
 
             <!-- Sync Status Banner -->
-            <div id="syncStatusBanner" class="p-3 rounded-xl border text-xs flex items-start gap-2.5 bg-amber-50 border-amber-200 text-amber-900">
-                <i data-lucide="alert-circle" class="w-4 h-4 text-amber-600 shrink-0 mt-0.5"></i>
+            <div id="syncStatusBanner" class="p-3 rounded-xl border text-xs flex items-start gap-2.5 bg-emerald-50 border-emerald-200 text-emerald-900">
+                <i data-lucide="wifi" id="syncStatusIcon" class="w-4 h-4 text-emerald-600 shrink-0 mt-0.5"></i>
                 <div>
-                    <span class="font-bold block" id="syncStatusTitle">Local Storage Mode</span>
-                    <span id="syncStatusDesc" class="text-2xs text-amber-700 leading-snug block">
-                        Changes are saved on this device only. Set up live sync below!
+                    <span class="font-bold block" id="syncStatusTitle">Instant Cloud Sync Active</span>
+                    <span id="syncStatusDesc" class="text-2xs text-emerald-700 leading-snug block">
+                        Real-time live syncing enabled via public cloud channel.
                     </span>
                 </div>
             </div>
@@ -226,24 +226,27 @@
                 <label class="block text-xs font-semibold text-slate-600 mb-1">Room Code / Sync Key:</label>
                 <div class="flex gap-2">
                     <input type="text" id="syncRoomInput" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm font-mono focus:ring-2 focus:ring-rose-500 focus:outline-none" placeholder="e.g. matt-and-tif-2026">
-                    <button onclick="copySyncCode()" class="px-3 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 text-xs font-semibold flex items-center gap-1 shrink-0" title="Copy code">
+                    <button onclick="copySyncCode()" class="px-3 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 text-xs font-semibold flex items-center gap-1 shrink-0" title="Copy room code">
                         <i data-lucide="copy" class="w-4 h-4"></i>
                     </button>
                 </div>
+                <p class="text-[11px] text-slate-500 mt-1.5">
+                    💡 Share this exact Room Code with your partner on their phone or laptop to pair instantly!
+                </p>
             </div>
 
             <div class="pt-2 border-t border-slate-100">
                 <button onclick="toggleFirebaseConfigSection()" class="w-full flex items-center justify-between text-xs font-bold text-slate-700 hover:text-rose-600 transition py-1">
                     <span class="flex items-center gap-1.5">
                         <i data-lucide="database" class="w-4 h-4 text-indigo-600"></i>
-                        Firebase Cloud Credentials Setup
+                        Custom Firebase Credentials (Optional)
                     </span>
                     <i data-lucide="chevron-down" id="fbConfigChevron" class="w-4 h-4 transition-transform"></i>
                 </button>
 
                 <div id="firebaseConfigSection" class="mt-3 space-y-3 hidden bg-slate-50 p-3.5 rounded-xl border border-slate-200">
                     <p class="text-2xs text-slate-600 leading-relaxed">
-                        Paste your <strong>Firebase Web Config</strong> (JSON object) to enable real-time synchronization across devices:
+                        If you prefer private dedicated storage, paste your <strong>Firebase Web Config</strong> below:
                     </p>
                     <textarea id="firebaseConfigInput" rows="5" class="w-full border border-slate-300 rounded-xl p-2.5 font-mono text-2xs focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder='{
   "apiKey": "AIzaSy...",
@@ -263,7 +266,7 @@
             <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                 <button onclick="closeSyncModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-xs font-semibold">Cancel</button>
                 <button onclick="saveSyncRoom()" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5">
-                    <i data-lucide="cloud-lightning" class="w-4 h-4"></i> Connect & Sync
+                    <i data-lucide="cloud-lightning" class="w-4 h-4"></i> Connect Room & Sync
                 </button>
             </div>
         </div>
@@ -443,6 +446,7 @@
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'for-us-savings-tracker';
+        const clientId = 'client_' + Math.random().toString(36).substring(2, 9);
 
         function getLocalDateString(dateObj = new Date()) {
             const year = dateObj.getFullYear();
@@ -480,21 +484,12 @@
             }
         };
 
-        const HARDCODED_FIREBASE_CONFIG = {
-            apiKey: "AIzaSyBeL_RP3j8HoKCQLRrQtSMrW3aHOhplL-4",
-            authDomain: "our-savings-app.firebaseapp.com",
-            databaseURL: "https://our-savings-app-default-rtdb.firebaseio.com",
-            projectId: "our-savings-app",
-            storageBucket: "our-savings-app.firebasestorage.app",
-            messagingSenderId: "425975640293",
-            appId: "1:425975640293:web:93c90879946cad8600a40c",
-            measurementId: "G-5MHPDSCL33"
-        };
-
         let db = null;
         let auth = null;
         let unsubscribeSync = null;
+        let ntfyEventSource = null;
         let isSyncingFromCloud = false;
+        let syncMode = 'relay'; // 'relay' or 'firebase'
 
         let appData = JSON.parse(JSON.stringify(defaultData));
         window.appData = appData;
@@ -544,14 +539,6 @@
                     return JSON.parse(savedConfig);
                 } catch(e) {}
             }
-            if (HARDCODED_FIREBASE_CONFIG && HARDCODED_FIREBASE_CONFIG.apiKey) {
-                return HARDCODED_FIREBASE_CONFIG;
-            }
-            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-                try {
-                    return typeof __firebase_config === 'string' ? JSON.parse(__firebase_config) : __firebase_config;
-                } catch(e) {}
-            }
             return null;
         }
 
@@ -560,41 +547,133 @@
             const title = document.getElementById('syncStatusTitle');
             const desc = document.getElementById('syncStatusDesc');
 
-            if (!pulse || !title || !desc) return;
+            if (!pulse) return;
 
             if (status === 'live') {
-                pulse.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
-                title.textContent = "Live Cloud Sync Active";
-                desc.textContent = `Real-time updates enabled in Room: ${currentRoomId}`;
+                pulse.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse";
+                if (title) title.textContent = "Live Cloud Sync Active";
+                if (desc) desc.textContent = `Connected to Room: ${currentRoomId} (${syncMode === 'firebase' ? 'Firebase' : 'Instant Relay'})`;
             } else if (status === 'connecting') {
-                pulse.className = "w-2 h-2 rounded-full bg-amber-500 animate-pulse";
-                title.textContent = "Connecting to Cloud...";
-                desc.textContent = "Establishing live database connection.";
+                pulse.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse";
+                if (title) title.textContent = "Connecting to Room...";
+                if (desc) desc.textContent = "Establishing live real-time stream.";
             } else if (status === 'error') {
-                pulse.className = "w-2 h-2 rounded-full bg-rose-500";
-                title.textContent = "Sync Connection Issue";
-                desc.textContent = message || "Could not connect to Firebase cloud. Running in local storage mode.";
+                pulse.className = "w-2.5 h-2.5 rounded-full bg-rose-500";
+                if (title) title.textContent = "Sync Connection Issue";
+                if (desc) desc.textContent = message || "Running in local fallback mode.";
             } else {
-                pulse.className = "w-2 h-2 rounded-full bg-slate-400";
-                title.textContent = "Local Storage Mode";
-                desc.textContent = "Data is saved locally on this device.";
+                pulse.className = "w-2.5 h-2.5 rounded-full bg-slate-400";
+                if (title) title.textContent = "Local Storage Mode";
+                if (desc) desc.textContent = "Data is saved locally on this device.";
             }
         }
 
-        async function saveToCloud() {
-            if (!db || isSyncingFromCloud) return;
+        function getCleanRoomTopic(room) {
+            const clean = room.toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+            return `forus-savings-${clean || 'default'}`;
+        }
+
+        function setupRelaySync(roomId) {
+            if (ntfyEventSource) {
+                ntfyEventSource.close();
+                ntfyEventSource = null;
+            }
+
+            const topic = getCleanRoomTopic(roomId);
+            updateSyncUIStatus('connecting');
+
             try {
-                const trackerRef = doc(db, 'artifacts', appId, 'public', 'data', 'trackers', currentRoomId);
-                await setDoc(trackerRef, {
-                    data: window.appData,
-                    updatedAt: new Date().toISOString(),
-                    updatedBy: auth?.currentUser?.uid || 'anonymous'
-                }, { merge: true });
+                ntfyEventSource = new EventSource(`https://ntfy.sh/${topic}/json`);
+
+                ntfyEventSource.onopen = () => {
+                    syncMode = 'relay';
+                    updateSyncUIStatus('live');
+                };
+
+                ntfyEventSource.onmessage = (event) => {
+                    try {
+                        const parsed = JSON.parse(event.data);
+                        if (!parsed.message) return;
+
+                        const payload = JSON.parse(parsed.message);
+                        if (payload.senderId === clientId) return; // Ignore self updates
+
+                        if (payload.data && payload.type === 'SYNC_DATA') {
+                            isSyncingFromCloud = true;
+                            window.appData = Object.assign({}, defaultData, payload.data);
+                            appData = window.appData;
+
+                            ensureFullSeptember2026();
+                            checkAndAccrueDailyInterest();
+                            saveLocalData();
+                            populateMonthSelectOptions();
+                            renderAll(true);
+
+                            isSyncingFromCloud = false;
+                            showToast("Updated in real-time from partner 💕");
+                        } else if (payload.type === 'REQUEST_STATE') {
+                            // Another device just connected, broadcast our current state to them
+                            broadcastLocalState();
+                        }
+                    } catch (e) {
+                        // Ignore non-json system ping messages
+                    }
+                };
+
+                ntfyEventSource.onerror = (err) => {
+                    console.warn("Relay event stream warning:", err);
+                    updateSyncUIStatus('connecting');
+                };
+
+                // Send request for initial state from other peers in the room
+                setTimeout(() => {
+                    fetch(`https://ntfy.sh/${topic}`, {
+                        method: 'POST',
+                        body: JSON.stringify({ senderId: clientId, type: 'REQUEST_STATE' })
+                    }).catch(() => {});
+                }, 1000);
+
             } catch (err) {
-                console.error("Failed to sync to cloud:", err);
+                console.error("Relay stream error:", err);
+                updateSyncUIStatus('error', 'Could not open live stream');
             }
         }
-        window.saveToCloud = saveToCloud;
+
+        async function broadcastLocalState() {
+            if (isSyncingFromCloud) return;
+            const topic = getCleanRoomTopic(currentRoomId);
+
+            if (syncMode === 'firebase' && db) {
+                try {
+                    const trackerRef = doc(db, 'artifacts', appId, 'public', 'data', 'trackers', currentRoomId);
+                    await setDoc(trackerRef, {
+                        data: window.appData,
+                        updatedAt: new Date().toISOString(),
+                        updatedBy: clientId
+                    }, { merge: true });
+                } catch (err) {
+                    console.error("Failed to sync to Firebase:", err);
+                }
+                return;
+            }
+
+            // Default Relay Push
+            try {
+                await fetch(`https://ntfy.sh/${topic}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        senderId: clientId,
+                        type: 'SYNC_DATA',
+                        data: window.appData,
+                        timestamp: Date.now()
+                    })
+                });
+            } catch (e) {
+                console.warn("Failed to broadcast state:", e);
+            }
+        }
+        window.saveToCloud = broadcastLocalState;
 
         function checkAndAccrueDailyInterest() {
             if (!window.appData) return false;
@@ -656,7 +735,7 @@
             appData.lastInterestAccrualDate = todayStr;
 
             saveLocalData();
-            saveToCloud();
+            broadcastLocalState();
 
             if (totalAccruedInBatch > 0) {
                 showToast(`Auto-credited +₱${totalAccruedInBatch.toFixed(2)} interest for ${diffDays} day(s)!`);
@@ -695,86 +774,59 @@
             }
         }
 
-        function setupRealtimeSync(roomId) {
-            if (!db) return;
-            const trackerRef = doc(db, 'artifacts', appId, 'public', 'data', 'trackers', roomId);
-
-            updateSyncUIStatus('connecting');
-
-            unsubscribeSync = onSnapshot(trackerRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    const cloudDoc = docSnap.data();
-                    if (cloudDoc && cloudDoc.data) {
-                        isSyncingFromCloud = true;
-                        window.appData = Object.assign({}, defaultData, cloudDoc.data);
-                        appData = window.appData;
-
-                        ensureFullSeptember2026();
-                        checkAndAccrueDailyInterest();
-                        saveLocalData();
-                        populateMonthSelectOptions();
-                        renderAll(true);
-
-                        isSyncingFromCloud = false;
-                        updateSyncUIStatus('live');
-                    }
-                } else {
-                    updateSyncUIStatus('live');
-                    saveToCloud();
-                }
-            }, (error) => {
-                console.warn("Realtime sync error:", error);
-                updateSyncUIStatus('error', error.message || 'Permission denied or network offline.');
-            });
-        }
-
         async function initCloudSync() {
             const roomDisplay = document.getElementById('displaySyncRoom');
             if (roomDisplay) roomDisplay.textContent = currentRoomId;
 
-            const firebaseConfig = getFirebaseConfig();
+            const customFirebaseConfig = getFirebaseConfig();
 
-            if (!firebaseConfig || !firebaseConfig.apiKey) {
-                updateSyncUIStatus('offline');
-                return;
-            }
+            if (customFirebaseConfig && customFirebaseConfig.apiKey) {
+                try {
+                    syncMode = 'firebase';
+                    updateSyncUIStatus('connecting');
 
-            try {
-                if (unsubscribeSync) {
-                    unsubscribeSync();
-                    unsubscribeSync = null;
-                }
-
-                if (getApps().length > 0) {
-                    await deleteApp(getApp());
-                }
-
-                const app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
-
-                let authenticated = false;
-
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    try {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                        authenticated = true;
-                    } catch (tErr) {}
-                }
-
-                if (!authenticated) {
-                    try {
-                        await signInAnonymously(auth);
-                    } catch (aErr) {
-                        console.warn("Anonymous sign-in skipped/failed:", aErr.message);
+                    if (getApps().length > 0) {
+                        await deleteApp(getApp());
                     }
-                }
 
-                setupRealtimeSync(currentRoomId);
-            } catch (err) {
-                console.error("Initialization error:", err);
-                updateSyncUIStatus('error', err.message || "Failed to connect to Firebase.");
+                    const app = initializeApp(customFirebaseConfig);
+                    auth = getAuth(app);
+                    db = getFirestore(app);
+
+                    await signInAnonymously(auth);
+
+                    const trackerRef = doc(db, 'artifacts', appId, 'public', 'data', 'trackers', currentRoomId);
+                    unsubscribeSync = onSnapshot(trackerRef, (docSnap) => {
+                        if (docSnap.exists()) {
+                            const cloudDoc = docSnap.data();
+                            if (cloudDoc && cloudDoc.data) {
+                                isSyncingFromCloud = true;
+                                window.appData = Object.assign({}, defaultData, cloudDoc.data);
+                                appData = window.appData;
+
+                                ensureFullSeptember2026();
+                                checkAndAccrueDailyInterest();
+                                saveLocalData();
+                                populateMonthSelectOptions();
+                                renderAll(true);
+
+                                isSyncingFromCloud = false;
+                                updateSyncUIStatus('live');
+                            }
+                        } else {
+                            updateSyncUIStatus('live');
+                            broadcastLocalState();
+                        }
+                    });
+                    return;
+                } catch (err) {
+                    console.warn("Custom Firebase failed, falling back to relay:", err);
+                }
             }
+
+            // Fallback to Instant Free Cloud Relay
+            syncMode = 'relay';
+            setupRelaySync(currentRoomId);
         }
 
         function loadLocalData() {
@@ -845,7 +897,7 @@
             }
 
             saveLocalData();
-            saveToCloud();
+            broadcastLocalState();
             renderAll(true);
         }
         window.toggleCellCheckbox = toggleCellCheckbox;
@@ -1395,7 +1447,7 @@
             appData.cells[cellId].notes = noteText;
 
             saveLocalData();
-            saveToCloud();
+            broadcastLocalState();
             renderAll(true);
             closeModal();
             showToast("Note saved!");
@@ -1412,7 +1464,7 @@
             }
 
             saveLocalData();
-            saveToCloud();
+            broadcastLocalState();
             renderAll(true);
             closeModal();
             showToast("Note deleted");
@@ -1604,7 +1656,7 @@
             if (rateDisp) rateDisp.textContent = `${t1}%`;
 
             saveLocalData();
-            saveToCloud();
+            broadcastLocalState();
             renderAll();
             closeMariBankModal();
             showToast("MariBank settings & interest updated!");
@@ -1683,7 +1735,7 @@
             }
 
             saveLocalData();
-            saveToCloud();
+            broadcastLocalState();
             renderAll();
             closeSettingsModal();
         }
@@ -1701,139 +1753,6 @@
             }
         }
         window.toggleTheme = toggleTheme;
-
-        function exportJSONBackup() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
-            const dlAnchor = document.createElement('a');
-            dlAnchor.setAttribute("href", dataStr);
-            dlAnchor.setAttribute("download", `for_us_savings_backup_${new Date().toISOString().slice(0,10)}.json`);
-            document.body.appendChild(dlAnchor);
-            dlAnchor.click();
-            dlAnchor.remove();
-            showToast("Backup downloaded!");
-        }
-        window.exportJSONBackup = exportJSONBackup;
-
-        function escapeCSVCell(str) {
-            if (str === null || str === undefined) return '""';
-            const text = String(str).replace(/"/g, '""');
-            return `"${text}"`;
-        }
-
-        function exportCSV() {
-            if (!appData || !appData.dates) {
-                showToast("No data available to export", 'error');
-                return;
-            }
-
-            const rows = [];
-            const headers = ['Date'];
-            appData.people.forEach(p => {
-                headers.push(`${p} Status`, `${p} Amount (₱)`, `${p} Timestamp`, `${p} Notes`);
-            });
-            headers.push('Total Day Base Saved (₱)');
-            rows.push(headers.map(escapeCSVCell).join(','));
-
-            let grandTotalBase = 0;
-            const personTotals = appData.people.map(() => 0);
-
-            appData.dates.forEach((dateStr, dIndex) => {
-                const row = [dateStr];
-                let dayTotal = 0;
-                const isPast = isPastDate(dateStr);
-
-                appData.people.forEach((_, pIndex) => {
-                    const cellId = getCellId(pIndex, dIndex);
-                    const cell = appData.cells[cellId] || {};
-                    const isChecked = cell.status === 'done' || cell.checked;
-
-                    if (isChecked) {
-                        const amount = appData.dailyRate || 20;
-                        personTotals[pIndex] += amount;
-                        dayTotal += amount;
-                        row.push('Saved', amount.toFixed(2), cell.timestamp || '', cell.notes || '');
-                    } else {
-                        const status = isPast ? 'Missed' : 'Pending';
-                        row.push(status, '0.00', '', cell.notes || '');
-                    }
-                });
-
-                grandTotalBase += dayTotal;
-                row.push(dayTotal.toFixed(2));
-                rows.push(row.map(escapeCSVCell).join(','));
-            });
-
-            rows.push('');
-            rows.push([escapeCSVCell('--- SUMMARY BREAKDOWN ---')]);
-
-            appData.people.forEach((person, pIndex) => {
-                rows.push([
-                    escapeCSVCell(`${person} Total Contributions`),
-                    escapeCSVCell(`₱${personTotals[pIndex].toLocaleString()}`)
-                ].join(','));
-            });
-
-            const accumulatedInterest = parseFloat(appData.accumulatedInterest || 0);
-            const totalBalance = grandTotalBase + accumulatedInterest;
-
-            rows.push([
-                escapeCSVCell('Total Joint Base Savings'),
-                escapeCSVCell(`₱${grandTotalBase.toLocaleString()}`)
-            ].join(','));
-
-            rows.push([
-                escapeCSVCell('Earned MariBank Interest So Far'),
-                escapeCSVCell(`₱${accumulatedInterest.toFixed(2)}`)
-            ].join(','));
-
-            rows.push([
-                escapeCSVCell('Total Current MariBank Balance'),
-                escapeCSVCell(`₱${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
-            ].join(','));
-
-            const csvContent = "\uFEFF" + rows.join("\n");
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            
-            const dlAnchor = document.createElement('a');
-            dlAnchor.setAttribute('href', url);
-            dlAnchor.setAttribute('download', `for_us_savings_history_${new Date().toISOString().slice(0, 10)}.csv`);
-            document.body.appendChild(dlAnchor);
-            dlAnchor.click();
-            dlAnchor.remove();
-            URL.revokeObjectURL(url);
-
-            showToast("CSV file exported!");
-        }
-        window.exportCSV = exportCSV;
-
-        function importJSONBackup(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const imported = JSON.parse(e.target.result);
-                    if (imported && imported.people && imported.dates) {
-                        appData = imported;
-                        window.appData = appData;
-                        ensureFullSeptember2026();
-                        saveLocalData();
-                        saveToCloud();
-                        populateMonthSelectOptions();
-                        renderAll();
-                        showToast("Data restored successfully!");
-                    } else {
-                        showToast("Invalid backup file structure", 'error');
-                    }
-                } catch (err) {
-                    showToast("Error parsing backup file", 'error');
-                }
-            };
-            reader.readAsText(file);
-        }
-        window.importJSONBackup = importJSONBackup;
 
         function setFilter(filterType) {
             activeFilter = filterType;
@@ -1923,7 +1842,7 @@
             appData.dates.sort((a, b) => new Date(a) - new Date(b));
 
             saveLocalData();
-            saveToCloud();
+            broadcastLocalState();
             populateMonthSelectOptions();
             renderAll();
             closeAddDayModal();
@@ -1969,7 +1888,7 @@
             appData.dates.sort((a, b) => new Date(a) - new Date(b));
 
             saveLocalData();
-            saveToCloud();
+            broadcastLocalState();
             populateMonthSelectOptions();
             renderAll();
             closeAddMonthModal();

@@ -620,6 +620,7 @@
             accumulatedInterest: 6.29,
             lastInterestAccrualDate: getLocalDateString(),
             withdrawals: [],
+            personNotes: {},
             people: ["Matt", "Tif"],
             dates: [
                 "August 23, 2026", "August 24, 2026", "August 25, 2026",
@@ -1448,9 +1449,11 @@
 
             let html = '';
 
-            // Individual Progress Cards
+            // Individual Progress Cards with Personal Notes Section
             stats.forEach((s, pIndex) => {
                 const theme = personThemes[pIndex % personThemes.length];
+                const savedNote = (appData.personNotes && appData.personNotes[s.person]) || '';
+                
                 html += `
                     <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-4">
                         <div class="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -1463,7 +1466,18 @@
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4 pt-1">
+                        <!-- Expanded Personal Note Section -->
+                        <div class="space-y-1 my-1 flex-1 flex flex-col min-h-[140px]">
+                            <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                                <i data-lucide="pen-tool" class="w-3 h-3 text-slate-400"></i> Personal Note / Goal
+                            </label>
+                            <textarea 
+                                oninput="updatePersonNote('${escapeHtml(s.person)}', this.value)" 
+                                class="w-full flex-1 bg-slate-50/80 border border-slate-200 rounded-xl p-3 text-xs text-slate-700 focus:bg-white focus:ring-2 focus:ring-rose-400 focus:outline-none transition resize-none leading-relaxed" 
+                                placeholder="Add a goal, message, or note for ${escapeHtml(s.person)}...">${escapeHtml(savedNote)}</textarea>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4 pt-3 border-t border-slate-100 shrink-0">
                             <div>
                                 <div class="text-xs text-slate-400 font-medium">Total Checkmarks</div>
                                 <div class="text-lg font-bold text-slate-900 mt-1">${s.totalChecked} ${s.totalChecked === 1 ? 'day' : 'days'}</div>
@@ -2355,6 +2369,19 @@
             if (modal) modal.classList.add('hidden');
         }
         window.closeAutoCheckModal = closeAutoCheckModal;
+
+        let noteSaveTimeout = null;
+        function updatePersonNote(person, text) {
+            if (!appData.personNotes) appData.personNotes = {};
+            appData.personNotes[person] = text;
+            
+            clearTimeout(noteSaveTimeout);
+            noteSaveTimeout = setTimeout(() => {
+                saveLocalData();
+                saveToCloud();
+            }, 600);
+        }
+        window.updatePersonNote = updatePersonNote;
 
         function runAutoCheck() {
             const personSelect = document.getElementById('autoCheckPersonSelect');

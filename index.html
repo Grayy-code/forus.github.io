@@ -90,6 +90,31 @@
             border-color: #f59e0b !important;
         }
 
+        /* Dark Mode High-Contrast Cell Badges & Timestamps */
+        body.dark-theme .bg-emerald-100\/90,
+        body.dark-theme button.bg-emerald-100\/90 {
+            background-color: #064e3b !important;
+            color: #6ee7b7 !important;
+            border-color: #059669 !important;
+        }
+        body.dark-theme .text-emerald-800 {
+            color: #a7f3d0 !important;
+        }
+        body.dark-theme .text-emerald-700 {
+            color: #6ee7b7 !important;
+        }
+        body.dark-theme .text-emerald-600 {
+            color: #34d399 !important;
+        }
+        body.dark-theme .text-rose-700 {
+            color: #fda4af !important;
+        }
+        body.dark-theme .bg-rose-100\/80 {
+            background-color: #881337 !important;
+            color: #fecdd3 !important;
+            border-color: #be123c !important;
+        }
+
         body.dark-theme input, 
         body.dark-theme textarea, 
         body.dark-theme select {
@@ -178,6 +203,12 @@
             <div class="flex flex-wrap items-center gap-2">
                 <button onclick="jumpToToday()" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-xs">
                     <i data-lucide="crosshair" class="w-4 h-4"></i> Jump to Today
+                </button>
+                <button onclick="openWithdrawModal()" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-xs">
+                    <i data-lucide="minus-circle" class="w-4 h-4"></i> Withdraw
+                </button>
+                <button onclick="openAutoCheckModal()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-xs">
+                    <i data-lucide="zap" class="w-4 h-4"></i> Auto-Check
                 </button>
                 <button onclick="openAddDayModal()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-xs">
                     <i data-lucide="plus" class="w-4 h-4"></i> Add Day
@@ -394,6 +425,10 @@
             </div>
             <div>
                 <p id="modalSubtext" class="text-xs font-medium text-slate-500 mb-2"></p>
+                <div class="mb-3">
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Contribution Amount for this Day (₱):</label>
+                    <input type="number" id="modalAmountInput" min="0" step="any" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="20">
+                </div>
                 <textarea id="modalNoteText" rows="4" class="w-full border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Add optional details or notes..."></textarea>
             </div>
             <div class="flex items-center justify-between pt-2">
@@ -452,6 +487,106 @@
         </div>
     </div>
 
+    <!-- Withdrawal Modal -->
+    <div id="withdrawModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i data-lucide="arrow-down-right" class="w-5 h-5 text-rose-600"></i> Withdraw / Deduct Savings
+                </h3>
+                <button onclick="closeWithdrawModal()" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Record New Withdrawal</h4>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Amount to Deduct (₱):</label>
+                    <input type="number" id="withdrawAmountInput" min="1" step="any" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm font-semibold focus:ring-2 focus:ring-rose-500 focus:outline-none" placeholder="e.g. 1000">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Date:</label>
+                        <input type="date" id="withdrawDateInput" class="w-full border border-slate-300 rounded-xl p-2 text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Person:</label>
+                        <select id="withdrawPersonInput" class="w-full border border-slate-300 rounded-xl p-2 text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                            <option value="Joint">Joint / Both</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Reason / Note (Optional):</label>
+                    <input type="text" id="withdrawNoteInput" class="w-full border border-slate-300 rounded-xl p-2 text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none" placeholder="e.g. Emergency, Transfer to main bank">
+                </div>
+                <button onclick="saveWithdrawal()" class="w-full py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold shadow-xs flex items-center justify-center gap-1.5">
+                    <i data-lucide="minus-circle" class="w-4 h-4"></i> Record Withdrawal
+                </button>
+            </div>
+
+            <div class="space-y-2 pt-2 border-t border-slate-100">
+                <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                    <span>Withdrawal History</span>
+                    <span id="totalWithdrawalsBadge" class="text-2xs font-extrabold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">₱0</span>
+                </h4>
+                <div id="withdrawalList" class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
+                    <!-- Dynamic Withdrawal Items -->
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end pt-2 border-t border-slate-100">
+                <button onclick="closeWithdrawModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-xs font-semibold">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auto-Check Modal -->
+    <div id="autoCheckModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-slate-100 space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i data-lucide="zap" class="w-5 h-5 text-indigo-600"></i> Auto-Check Contributions
+                </h3>
+                <button onclick="closeAutoCheckModal()" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Select Person:</label>
+                    <select id="autoCheckPersonSelect" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        <option value="all">Both (All Contributors)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Action Range:</label>
+                    <select id="autoCheckRangeSelect" onchange="toggleAutoCheckDaysInput(this.value)" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        <option value="days">Specific Number of Days</option>
+                        <option value="today">Check Past Days Up to Today</option>
+                        <option value="month">Check Current Month</option>
+                        <option value="all">Check All Unchecked Days</option>
+                    </select>
+                </div>
+
+                <div id="autoCheckDaysContainer">
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Number of Days to Check:</label>
+                    <input type="number" id="autoCheckDaysInput" min="1" max="365" value="7" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="e.g. 7, 14, 30">
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button onclick="closeAutoCheckModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-xs font-semibold">Cancel</button>
+                <button onclick="runAutoCheck()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5">
+                    <i data-lucide="check-circle" class="w-4 h-4"></i> Apply Auto-Check
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Non-intrusive Toast Notification -->
     <div id="toastNotification" class="fixed bottom-5 right-5 z-50 bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 transition-all duration-300 opacity-0 pointer-events-none transform translate-y-2">
         <i id="toastIcon" data-lucide="check-circle-2" class="w-5 h-5"></i>
@@ -484,6 +619,7 @@
             interestRate: 3,
             accumulatedInterest: 6.29,
             lastInterestAccrualDate: getLocalDateString(),
+            withdrawals: [],
             people: ["Matt", "Tif"],
             dates: [
                 "August 23, 2026", "August 24, 2026", "August 25, 2026",
@@ -493,11 +629,12 @@
                 "September 10, 2026", "September 11, 2026", "September 12, 2026", "September 13, 2026", "September 14, 2026",
                 "September 15, 2026", "September 16, 2026", "September 17, 2026", "September 18, 2026", "September 19, 2026",
                 "September 20, 2026", "September 21, 2026", "September 22, 2026", "September 23, 2026", "September 24, 2026",
-                "September 25, 2026", "September 26, 2026"
+                "September 25, 2026", "September 26, 2026", "September 27, 2026", "September 28, 2026", "September 29, 2026",
+                "September 30, 2026"
             ],
             cells: {
-                "r0_c2": { status: "done", checked: true, timestamp: "Aug 25 · 09:30 AM", notes: "Saved ₱20" },
-                "r1_c2": { status: "done", checked: true, timestamp: "Aug 25 · 10:15 AM", notes: "Saved ₱20" }
+                "r0_c2": { status: "done", checked: true, amount: 20, timestamp: "Aug 25 · 09:30 AM", notes: "Saved ₱20" },
+                "r1_c2": { status: "done", checked: true, amount: 20, timestamp: "Aug 25 · 10:15 AM", notes: "Saved ₱20" }
             }
         };
 
@@ -689,7 +826,7 @@
                             const cellId = getCellId(pIndex, dIndex);
                             const cell = appData.cells[cellId];
                             if (cell && (cell.status === 'done' || cell.checked)) {
-                                baseContributions += (appData.dailyRate || 20);
+                                baseContributions += (cell.amount !== undefined ? Number(cell.amount) : (appData.dailyRate || 20));
                             }
                         }
                     });
@@ -828,6 +965,15 @@
                     if (appData.interestRate === undefined) appData.interestRate = 3;
                     if (appData.accumulatedInterest === undefined) appData.accumulatedInterest = 6.29;
                     if (!appData.lastInterestAccrualDate) appData.lastInterestAccrualDate = getLocalDateString();
+                    if (!Array.isArray(appData.withdrawals)) appData.withdrawals = [];
+                    
+                    // Auto-append missing late September dates if not present in existing stored data
+                    ["September 27, 2026", "September 28, 2026", "September 29, 2026", "September 30, 2026"].forEach(d => {
+                        if (!appData.dates.includes(d)) {
+                            appData.dates.push(d);
+                        }
+                    });
+                    appData.dates.sort((a, b) => new Date(a) - new Date(b));
                 } catch (e) {
                     appData = JSON.parse(JSON.stringify(defaultData));
                 }
@@ -869,7 +1015,7 @@
         function toggleCellCheckbox(pIndex, dIndex, isChecked) {
             const cellId = getCellId(pIndex, dIndex);
             if (!appData.cells[cellId]) {
-                appData.cells[cellId] = { status: '', notes: '', timestamp: '' };
+                appData.cells[cellId] = { status: '', notes: '', timestamp: '', amount: appData.dailyRate || 20 };
             }
 
             if (isChecked) {
@@ -878,6 +1024,9 @@
                 const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 appData.cells[cellId].status = 'done';
                 appData.cells[cellId].checked = true;
+                if (!appData.cells[cellId].amount && appData.cells[cellId].amount !== 0) {
+                    appData.cells[cellId].amount = appData.dailyRate || 20;
+                }
                 appData.cells[cellId].timestamp = `${dateString} · ${timeString}`;
             } else {
                 appData.cells[cellId].status = '';
@@ -950,6 +1099,7 @@
                 let currentStreak = 0;
                 let bestStreak = 0;
                 let tempStreak = 0;
+                let totalSaved = 0;
 
                 appData.dates.forEach((_, dIndex) => {
                     const cellId = getCellId(pIndex, dIndex);
@@ -959,6 +1109,8 @@
                     if (isDone) {
                         totalChecked++;
                         tempStreak++;
+                        const cellAmount = cell.amount !== undefined ? Number(cell.amount) : (appData.dailyRate || 20);
+                        totalSaved += cellAmount;
                         if (tempStreak > bestStreak) bestStreak = tempStreak;
                     } else {
                         tempStreak = 0;
@@ -1003,7 +1155,7 @@
                     totalChecked,
                     currentStreak,
                     bestStreak,
-                    totalSaved: totalChecked * appData.dailyRate
+                    totalSaved
                 };
             });
         }
@@ -1052,7 +1204,7 @@
 
         function createCellTd(pIndex, dIndex, isToday = false) {
             const cellId = getCellId(pIndex, dIndex);
-            const cellData = appData.cells[cellId] || { status: '', notes: '', timestamp: '' };
+            const cellData = appData.cells[cellId] || { status: '', notes: '', timestamp: '', amount: appData.dailyRate || 20 };
             const isChecked = cellData.status === 'done' || cellData.checked || false;
             const dateStr = appData.dates[dIndex];
             const isPast = isPastDate(dateStr);
@@ -1084,16 +1236,24 @@
                     <i data-lucide="sticky-note" class="w-3.5 h-3.5"></i>
                    </button>`;
 
-            const timeBadge = (isChecked && cellData.timestamp)
-                ? `<span class="text-2xs font-semibold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full shadow-xs mt-1 border border-emerald-200/60">${cellData.timestamp}</span>`
+            const currentAmount = cellData.amount !== undefined ? cellData.amount : (appData.dailyRate || 20);
+            const amountBadge = isChecked
+                ? `<button onclick="openModal(${pIndex}, ${dIndex})" class="text-2xs font-extrabold text-emerald-800 bg-emerald-100/90 hover:bg-emerald-200 px-2 py-0.5 rounded-full shadow-xs mt-1 border border-emerald-300/80 transition cursor-pointer flex items-center gap-0.5" title="Click to customize contribution amount">
+                    ₱${currentAmount} <i data-lucide="pencil" class="w-2.5 h-2.5 text-emerald-600 opacity-75"></i>
+                   </button>`
                 : (isMissed ? `<span class="text-2xs font-semibold text-rose-700 bg-rose-100/80 px-2 py-0.5 rounded-full shadow-xs mt-1 border border-rose-200">Missed</span>` : '');
+
+            const timestampBadge = (isChecked && cellData.timestamp)
+                ? `<span class="text-[10px] font-medium text-emerald-700 opacity-90 mt-0.5 whitespace-nowrap">${escapeHtml(cellData.timestamp)}</span>`
+                : '';
 
             const checkboxBorder = isMissed ? 'border-rose-300 bg-rose-50' : 'border-slate-300';
 
             td.innerHTML = `
                 <div class="w-full h-full min-h-[60px] flex flex-col items-center justify-center relative group/cell ${bgClass} p-2 transition">
                     <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleCellCheckbox(${pIndex}, ${dIndex}, this.checked)" class="w-5 h-5 rounded-md ${checkboxBorder} text-emerald-600 focus:ring-emerald-500 cursor-pointer accent-emerald-600 transition shadow-xs">
-                    ${timeBadge}
+                    ${amountBadge}
+                    ${timestampBadge}
                     ${noteBtnHtml}
                 </div>
             `;
@@ -1268,10 +1428,15 @@
             let jointSavings = 0;
             stats.forEach(s => jointSavings += s.totalSaved);
 
-            const pastInterest = parseFloat(appData.accumulatedInterest || 0);
-            const totalBalance = jointSavings + pastInterest;
+            let totalWithdrawals = 0;
+            if (Array.isArray(appData.withdrawals)) {
+                appData.withdrawals.forEach(w => totalWithdrawals += Number(w.amount || 0));
+            }
 
-            const mb = calculateMariBankInterest(totalBalance);
+            const pastInterest = parseFloat(appData.accumulatedInterest || 0);
+            const netBalance = Math.max(0, jointSavings - totalWithdrawals + pastInterest);
+
+            const mb = calculateMariBankInterest(netBalance);
             const rates = getMariBankRates();
 
             const personThemes = [
@@ -1330,13 +1495,18 @@
                             <span class="text-slate-300 font-medium">Base Contributions:</span>
                             <span class="font-bold text-white">₱${jointSavings.toLocaleString()}</span>
                         </div>
+                        ${totalWithdrawals > 0 ? `
+                        <div class="flex items-center justify-between text-xs md:text-sm">
+                            <span class="text-rose-300 font-medium">Total Withdrawals:</span>
+                            <span class="font-bold text-rose-400">-₱${totalWithdrawals.toLocaleString()}</span>
+                        </div>` : ''}
                         <div class="flex items-center justify-between text-xs md:text-sm">
                             <span class="text-slate-300 font-medium">Earned Interest:</span>
                             <span class="font-bold text-emerald-400">+₱${pastInterest.toFixed(2)}</span>
                         </div>
                         <div class="flex items-center justify-between text-xs md:text-sm border-t border-slate-700/60 pt-1.5">
-                            <span class="text-slate-200 font-semibold">Total Bank Balance:</span>
-                            <span class="font-extrabold text-white text-sm md:text-base">₱${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            <span class="text-slate-200 font-semibold">Net Bank Balance:</span>
+                            <span class="font-extrabold text-white text-sm md:text-base">₱${netBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                         <div class="flex items-center justify-between text-xs md:text-sm">
                             <span class="text-emerald-400 font-medium">Net Daily Interest:</span>
@@ -1403,16 +1573,18 @@
         function openModal(pIndex, dIndex) {
             currentModalTarget = { pIndex, dIndex };
             const cellId = getCellId(pIndex, dIndex);
-            const cellData = appData.cells[cellId] || { notes: '' };
+            const cellData = appData.cells[cellId] || { notes: '', amount: appData.dailyRate || 20 };
 
             const personName = appData.people[pIndex];
             const dateStr = appData.dates[dIndex];
 
             const modalSubtext = document.getElementById('modalSubtext');
+            const modalAmountInput = document.getElementById('modalAmountInput');
             const modalNoteText = document.getElementById('modalNoteText');
             const noteModal = document.getElementById('noteModal');
 
             if (modalSubtext) modalSubtext.textContent = `${personName} - ${dateStr}`;
+            if (modalAmountInput) modalAmountInput.value = cellData.amount !== undefined ? cellData.amount : (appData.dailyRate || 20);
             if (modalNoteText) modalNoteText.value = cellData.notes || '';
 
             if (noteModal) noteModal.classList.remove('hidden');
@@ -1431,17 +1603,21 @@
             const { pIndex, dIndex } = currentModalTarget;
             const cellId = getCellId(pIndex, dIndex);
             const noteText = document.getElementById('modalNoteText').value.trim();
+            const amountVal = parseFloat(document.getElementById('modalAmountInput').value);
 
             if (!appData.cells[cellId]) {
-                appData.cells[cellId] = { status: '', notes: '', timestamp: '' };
+                appData.cells[cellId] = { status: '', notes: '', timestamp: '', amount: appData.dailyRate || 20 };
             }
             appData.cells[cellId].notes = noteText;
+            if (!isNaN(amountVal) && amountVal >= 0) {
+                appData.cells[cellId].amount = amountVal;
+            }
 
             saveLocalData();
             saveToCloud();
             renderAll(true);
             closeModal();
-            showToast("Note saved!");
+            showToast("Details updated!");
         }
         window.saveModalNote = saveModalNote;
 
@@ -1822,7 +1998,7 @@
                     const isChecked = cell.status === 'done' || cell.checked;
 
                     if (isChecked) {
-                        const amount = appData.dailyRate || 20;
+                        const amount = cell.amount !== undefined ? Number(cell.amount) : (appData.dailyRate || 20);
                         personTotals[pIndex] += amount;
                         dayTotal += amount;
                         row.push('Saved', amount.toFixed(2), cell.timestamp || '', cell.notes || '');
@@ -2025,6 +2201,252 @@
             if (modal) modal.classList.add('hidden');
         }
         window.closeAddMonthModal = closeAddMonthModal;
+
+        function openWithdrawModal() {
+            const modal = document.getElementById('withdrawModal');
+            const dateInput = document.getElementById('withdrawDateInput');
+            const personSelect = document.getElementById('withdrawPersonInput');
+            const amountInput = document.getElementById('withdrawAmountInput');
+            const noteInput = document.getElementById('withdrawNoteInput');
+
+            if (dateInput) dateInput.value = new Date().toISOString().slice(0, 10);
+            if (amountInput) amountInput.value = '';
+            if (noteInput) noteInput.value = '';
+
+            if (personSelect) {
+                personSelect.innerHTML = '<option value="Joint">Joint / Both</option>';
+                appData.people.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p;
+                    opt.textContent = p;
+                    personSelect.appendChild(opt);
+                });
+            }
+
+            renderWithdrawalList();
+            if (modal) modal.classList.remove('hidden');
+        }
+        window.openWithdrawModal = openWithdrawModal;
+
+        function closeWithdrawModal() {
+            const modal = document.getElementById('withdrawModal');
+            if (modal) modal.classList.add('hidden');
+        }
+        window.closeWithdrawModal = closeWithdrawModal;
+
+        function renderWithdrawalList() {
+            const list = document.getElementById('withdrawalList');
+            const badge = document.getElementById('totalWithdrawalsBadge');
+            if (!list) return;
+
+            const withdrawals = appData.withdrawals || [];
+            let sum = 0;
+            withdrawals.forEach(w => sum += Number(w.amount || 0));
+
+            if (badge) badge.textContent = `Total: ₱${sum.toLocaleString()}`;
+
+            if (withdrawals.length === 0) {
+                list.innerHTML = `<p class="text-2xs text-slate-400 italic text-center py-2">No withdrawals recorded yet.</p>`;
+                return;
+            }
+
+            let html = '';
+            withdrawals.slice().reverse().forEach((w, reverseIdx) => {
+                const actualIdx = withdrawals.length - 1 - reverseIdx;
+                const timeInfo = w.timestamp ? ` · ${escapeHtml(w.timestamp)}` : '';
+                html += `
+                    <div class="flex items-center justify-between bg-slate-50 border border-slate-200 p-2 rounded-xl text-xs">
+                        <div>
+                            <div class="font-bold text-rose-600 flex items-center gap-1">
+                                <span>-₱${Number(w.amount).toLocaleString()}</span>
+                                <span class="text-2xs font-medium text-slate-500">(${escapeHtml(w.person || 'Joint')})</span>
+                            </div>
+                            <div class="text-[10px] text-slate-500">${escapeHtml(w.date || '')}${timeInfo} ${w.note ? '• ' + escapeHtml(w.note) : ''}</div>
+                        </div>
+                        <button onclick="deleteWithdrawal(${actualIdx})" class="text-rose-500 hover:text-rose-700 p-1 rounded-lg hover:bg-rose-50" title="Delete withdrawal">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>`;
+            });
+            list.innerHTML = html;
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function saveWithdrawal() {
+            const amountInput = document.getElementById('withdrawAmountInput');
+            const dateInput = document.getElementById('withdrawDateInput');
+            const personSelect = document.getElementById('withdrawPersonInput');
+            const noteInput = document.getElementById('withdrawNoteInput');
+
+            const amount = parseFloat(amountInput.value);
+            if (isNaN(amount) || amount <= 0) {
+                showToast("Please enter a valid withdrawal amount", 'error');
+                return;
+            }
+
+            if (!Array.isArray(appData.withdrawals)) appData.withdrawals = [];
+
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            appData.withdrawals.push({
+                id: Date.now().toString(),
+                amount: amount,
+                date: dateInput.value || new Date().toISOString().slice(0, 10),
+                timestamp: timeString,
+                person: personSelect.value || 'Joint',
+                note: noteInput.value.trim()
+            });
+
+            saveLocalData();
+            saveToCloud();
+            renderAll(true);
+            renderWithdrawalList();
+            amountInput.value = '';
+            noteInput.value = '';
+            showToast(`Recorded ₱${amount.toLocaleString()} withdrawal!`);
+        }
+        window.saveWithdrawal = saveWithdrawal;
+
+        function deleteWithdrawal(idx) {
+            if (!Array.isArray(appData.withdrawals)) return;
+            appData.withdrawals.splice(idx, 1);
+            saveLocalData();
+            saveToCloud();
+            renderAll(true);
+            renderWithdrawalList();
+            showToast("Withdrawal record removed");
+        }
+        window.deleteWithdrawal = deleteWithdrawal;
+
+        function openAutoCheckModal() {
+            const modal = document.getElementById('autoCheckModal');
+            const select = document.getElementById('autoCheckPersonSelect');
+            if (select) {
+                select.innerHTML = '<option value="all">Both (All Contributors)</option>';
+                appData.people.forEach((p, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = idx;
+                    opt.textContent = p;
+                    select.appendChild(opt);
+                });
+            }
+            const rangeSelect = document.getElementById('autoCheckRangeSelect');
+            if (rangeSelect) {
+                toggleAutoCheckDaysInput(rangeSelect.value);
+            }
+            if (modal) modal.classList.remove('hidden');
+        }
+        window.openAutoCheckModal = openAutoCheckModal;
+
+        function toggleAutoCheckDaysInput(rangeVal) {
+            const container = document.getElementById('autoCheckDaysContainer');
+            if (!container) return;
+            if (rangeVal === 'days') {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+        window.toggleAutoCheckDaysInput = toggleAutoCheckDaysInput;
+
+        function closeAutoCheckModal() {
+            const modal = document.getElementById('autoCheckModal');
+            if (modal) modal.classList.add('hidden');
+        }
+        window.closeAutoCheckModal = closeAutoCheckModal;
+
+        function runAutoCheck() {
+            const personSelect = document.getElementById('autoCheckPersonSelect');
+            const rangeSelect = document.getElementById('autoCheckRangeSelect');
+            const daysInput = document.getElementById('autoCheckDaysInput');
+
+            if (!personSelect || !rangeSelect) return;
+
+            const targetPerson = personSelect.value;
+            const targetRange = rangeSelect.value;
+            const daysToMark = daysInput ? Math.max(1, parseInt(daysInput.value) || 1) : 1;
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const now = new Date();
+            const dateString = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            let updatedCount = 0;
+
+            const targetPeopleIndices = targetPerson === 'all' 
+                ? appData.people.map((_, i) => i) 
+                : [parseInt(targetPerson)];
+
+            if (targetRange === 'days') {
+                targetPeopleIndices.forEach(pIndex => {
+                    let checkedForPerson = 0;
+                    for (let dIndex = 0; dIndex < appData.dates.length; dIndex++) {
+                        if (checkedForPerson >= daysToMark) break;
+                        const cellId = getCellId(pIndex, dIndex);
+                        if (!appData.cells[cellId]) {
+                            appData.cells[cellId] = { status: '', notes: '', timestamp: '', amount: appData.dailyRate || 20 };
+                        }
+                        const cell = appData.cells[cellId];
+                        if (!(cell.status === 'done' || cell.checked)) {
+                            cell.status = 'done';
+                            cell.checked = true;
+                            if (cell.amount === undefined) cell.amount = appData.dailyRate || 20;
+                            cell.timestamp = `${dateString} · ${timeString}`;
+                            updatedCount++;
+                            checkedForPerson++;
+                        }
+                    }
+                });
+            } else {
+                appData.dates.forEach((dateStr, dIndex) => {
+                    const parsedDate = new Date(dateStr);
+                    if (isNaN(parsedDate.getTime())) return;
+
+                    let shouldCheck = false;
+                    parsedDate.setHours(0, 0, 0, 0);
+
+                    if (targetRange === 'today') {
+                        shouldCheck = parsedDate <= today;
+                    } else if (targetRange === 'month') {
+                        shouldCheck = parsedDate.getFullYear() === today.getFullYear() && parsedDate.getMonth() === today.getMonth();
+                    } else if (targetRange === 'all') {
+                        shouldCheck = true;
+                    }
+
+                    if (shouldCheck) {
+                        targetPeopleIndices.forEach(pIndex => {
+                            const cellId = getCellId(pIndex, dIndex);
+                            if (!appData.cells[cellId]) {
+                                appData.cells[cellId] = { status: '', notes: '', timestamp: '', amount: appData.dailyRate || 20 };
+                            }
+                            const cell = appData.cells[cellId];
+                            if (!(cell.status === 'done' || cell.checked)) {
+                                cell.status = 'done';
+                                cell.checked = true;
+                                if (cell.amount === undefined) cell.amount = appData.dailyRate || 20;
+                                cell.timestamp = `${dateString} · ${timeString}`;
+                                updatedCount++;
+                            }
+                        });
+                    }
+                });
+            }
+
+            if (updatedCount > 0) {
+                saveLocalData();
+                saveToCloud();
+                renderAll(true);
+                showToast(`Auto-checked ${updatedCount} box(es)!`);
+            } else {
+                showToast("No unchecked boxes matched the criteria", 'error');
+            }
+
+            closeAutoCheckModal();
+        }
+        window.runAutoCheck = runAutoCheck;
 
         function saveNewMonth() {
             const input = document.getElementById('newMonthInput');

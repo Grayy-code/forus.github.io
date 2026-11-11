@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>For Us 💕 - Savings & Contribution Tracker</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💕</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -126,6 +127,38 @@
         body.dark-theme input::placeholder {
             color: #64748b !important;
         }
+
+        /* Dark Mode Header Action Buttons High-Contrast Text */
+        body.dark-theme #syncRoomBtn {
+            background-color: rgba(136, 19, 55, 0.3) !important;
+            border-color: #be123c !important;
+            color: #fecdd3 !important;
+        }
+        body.dark-theme #syncRoomBtn #displaySyncRoom {
+            color: #ffffff !important;
+        }
+        body.dark-theme button[onclick="changeRate()"] {
+            background-color: rgba(6, 78, 59, 0.4) !important;
+            border-color: #059669 !important;
+            color: #a7f3d0 !important;
+        }
+        body.dark-theme button[onclick="changeRate()"] #displayDailyRate {
+            color: #ffffff !important;
+        }
+        body.dark-theme button[onclick="openMariBankModal()"] {
+            background-color: rgba(49, 46, 129, 0.4) !important;
+            border-color: #6366f1 !important;
+            color: #c7d2fe !important;
+        }
+        body.dark-theme button[onclick="openMariBankModal()"] #displayInterestRate {
+            color: #ffffff !important;
+        }
+        body.dark-theme button[onclick="openAddMonthModal()"] {
+            background-color: rgba(6, 78, 59, 0.4) !important;
+            border-color: #059669 !important;
+            color: #a7f3d0 !important;
+        }
+
         .custom-scrollbar::-webkit-scrollbar {
             height: 8px;
             width: 8px;
